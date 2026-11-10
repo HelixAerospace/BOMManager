@@ -1,7 +1,7 @@
 import { PackageCheck, Send, Trash2, Truck, X } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useNav } from '../lib/nav'
-import { useDerived } from '../lib/derived'
+import { useDerived, useMoney } from '../lib/derived'
 import { fmtMoney, fmtNum, isLate, isPacked } from '../lib/calc'
 import { type Order, type OrderStatus, today, uid } from '../lib/types'
 import type { Draft } from 'immer'
@@ -28,6 +28,7 @@ function receiveLine(d: Draft<import('../lib/types').BomData>, orderId: string, 
 }
 
 export default function OrderPanel({ id }: { id: string }) {
+  const { fmt: money, sym, cur: dispCur } = useMoney()
   const { data, update } = useStore()
   const nav = useNav()
   const { idx } = useDerived()
@@ -180,7 +181,7 @@ export default function OrderPanel({ id }: { id: string }) {
           <Line label="Items">{fmtMoney(goods, o.currency)}</Line>
           <Line label="Shipping, customs & fees"><NumInput className="input num w-32 py-1" value={o.shipping} min={0} onChange={(v) => set('shipping', v)} /></Line>
           <Line label="Total (excl. VAT)"><b>{fmtMoney(total, o.currency)}</b></Line>
-          {o.currency !== 'ILS' && <Line label="Total in ₪">{fmtMoney(total * rate)}</Line>}
+          {o.currency !== dispCur && <Line label={`Total in ${dispCur}`}>{money(total * rate)}</Line>}
         </div>
       </Section>
 

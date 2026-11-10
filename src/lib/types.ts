@@ -90,7 +90,8 @@ export interface StockMove {
 }
 
 export interface Settings {
-  baseCurrency: string // 'ILS'
+  baseCurrency: string // 'ILS': costs are calculated in shekels internally
+  displayCurrency?: string // currency costs are shown in (default USD)
   fx: Record<string, number> // currency -> ILS rate
   categories: Category[]
   topAssemblyId: ID | null
@@ -129,6 +130,7 @@ export function emptyData(): BomData {
     savedBy: '',
     settings: {
       baseCurrency: 'ILS',
+      displayCurrency: 'USD',
       fx: { ILS: 1, USD: 3.7, EUR: 4.0, CNY: 0.51, GBP: 4.7 },
       categories: DEFAULT_CATEGORIES,
       topAssemblyId: null,

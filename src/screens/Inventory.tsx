@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Warehouse } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useNav } from '../lib/nav'
-import { useDerived } from '../lib/derived'
+import { useDerived, useMoney } from '../lib/derived'
 import { fmtMoney, fmtNum, stockState, toIls } from '../lib/calc'
 import { uid } from '../lib/types'
 import { Card, Empty, FilterTabs, NumInput, PageHeader, SearchBox, StockChip } from '../components/ui'
@@ -10,6 +10,7 @@ import { Card, Empty, FilterTabs, NumInput, PageHeader, SearchBox, StockChip } f
 type F = 'all' | 'attention' | 'spares'
 
 export default function InventoryScreen() {
+  const { fmt: money, sym, cur: dispCur } = useMoney()
   const { data, update } = useStore()
   const nav = useNav()
   const { idx, onOrder, actual } = useDerived()
@@ -41,7 +42,7 @@ export default function InventoryScreen() {
 
   return (
     <>
-      <PageHeader title="Inventory" subtitle={`${items.length} stocked parts · ${fmtMoney(value)} on hand · ${attention} need attention`} />
+      <PageHeader title="Inventory" subtitle={`${items.length} stocked parts · ${money(value)} on hand · ${attention} need attention`} />
       <div className="flex flex-wrap items-center gap-3 px-6 pt-4">
         <FilterTabs value={f} onChange={setF} options={[{ value: 'all', label: 'All', count: items.length }, { value: 'attention', label: 'Low / out', count: attention }, { value: 'spares', label: 'Spares tracked', count: items.filter((p) => p.sparesTarget > 0).length }]} />
         <SearchBox value={q} onChange={setQ} placeholder="Search PN, name, location…" />

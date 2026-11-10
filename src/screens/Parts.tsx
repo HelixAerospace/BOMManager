@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Boxes, Plus } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useNav } from '../lib/nav'
-import { useDerived } from '../lib/derived'
+import { displayCurrencyOf, useDerived, useMoney } from '../lib/derived'
 import { fmtMoney, fmtNum, fmtWeight, isPacked, nextPn, stockState, toIls } from '../lib/calc'
 import { type BomData, type MakeBuy, type Part, uid } from '../lib/types'
 import { Empty, FilterTabs, MakeBuyChip, PageHeader, SearchBox, StockChip } from '../components/ui'
@@ -10,12 +10,13 @@ import { Empty, FilterTabs, MakeBuyChip, PageHeader, SearchBox, StockChip } from
 export function newPart(data: BomData, prefix: string, makeBuy: MakeBuy): Part {
   return {
     id: uid(), pn: nextPn(data, prefix), name: '', category: prefix, makeBuy, rev: 'A', unit: 'pcs', plannedCost: 0,
-    currency: data.settings.baseCurrency, supplierId: null, supplierPn: '', url: '', leadTimeDays: null, onHand: 0, location: '',
+    currency: displayCurrencyOf(data.settings), supplierId: null, supplierPn: '', url: '', leadTimeDays: null, onHand: 0, location: '',
     minStock: 0, sparesTarget: 0, notes: '', files: [], createdAt: new Date().toISOString(),
   }
 }
 
 export default function PartsScreen() {
+  const { fmt: money, sym, cur: dispCur } = useMoney()
   const { data, update } = useStore()
   const nav = useNav()
   const { idx, actual, weights } = useDerived()
@@ -67,7 +68,7 @@ export default function PartsScreen() {
             <table className="grid-table">
               <thead>
                 <tr>
-                  <th>Part number</th><th>Name</th><th>Rev</th><th>Type</th><th>Supplier</th><th className="num">Price</th><th className="num">Planned (₪)</th><th className="num">Actual (₪)</th><th className="num">Weight</th><th className="num">On hand</th><th>Stock</th><th className="num">Used in</th>
+                  <th>Part number</th><th>Name</th><th>Rev</th><th>Type</th><th>Supplier</th><th className="num">Price</th><th className="num">Planned ({sym})</th><th className="num">Actual ({sym})</th><th className="num">Weight</th><th className="num">On hand</th><th>Stock</th><th className="num">Used in</th>
                 </tr>
               </thead>
               <tbody>
@@ -84,11 +85,11 @@ export default function PartsScreen() {
                       <td>{isAsm ? <span className="text-xs text-ink-subtle">Assembly</span> : <MakeBuyChip v={p.makeBuy} />}</td>
                       <td className="whitespace-nowrap text-ink-subtle">{idx.supplierById.get(p.supplierId ?? '')?.name ?? ''}</td>
                       <td className="num text-ink-subtle">{isPacked(p) && p.packPrice != null ? <span title={`${fmtMoney(p.plannedCost, p.currency)} per piece`}>{fmtMoney(p.packPrice, p.currency)} / {fmtNum(p.packQty!)}</span> : p.plannedCost ? fmtMoney(p.plannedCost, p.currency) : ''}</td>
-                      <td className="num">{planned ? fmtMoney(planned) : ''}</td>
+                      <td className="num">{planned ? money(planned) : ''}</td>
                       <td className="num">
                         {a ? (
                           <span title={`from ${a.orderNumber}`}>
-                            {fmtMoney(a.unitIls)}
+                            {money(a.unitIls)}
                             {Math.abs(diff) >= 0.05 && <span className={`ml-1 text-xs ${diff > 0 ? 'text-warning' : 'text-tip'}`}>{diff > 0 ? '+' : ''}{Math.round(diff * 100)}%</span>}
                           </span>
                         ) : ''}

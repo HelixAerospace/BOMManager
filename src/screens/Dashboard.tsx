@@ -2,11 +2,12 @@ import { useMemo } from 'react'
 import { AlertTriangle, ListTree, Truck, Warehouse } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useNav } from '../lib/nav'
-import { useDerived } from '../lib/derived'
+import { useDerived, useMoney } from '../lib/derived'
 import { buildCheck, fmtMoney, fmtWeight, isLate, isOpen, orderValueIls, stockState } from '../lib/calc'
 import { Card, Empty, Kpi, OrderStatusChip, PageHeader, StepBar } from '../components/ui'
 
 export default function Dashboard() {
+  const { fmt: money, sym, cur: dispCur } = useMoney()
   const { data, update } = useStore()
   const nav = useNav()
   const { idx, costs, weights, topAssemblies } = useDerived()
@@ -73,10 +74,10 @@ export default function Dashboard() {
       />
       <div className="space-y-5 p-6">
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-          <Kpi label="Cost per unit (planned)" value={fmtMoney(cost?.planned)} sub={cost && cost.actualCoverage > 0 ? <>Actual so far {fmtMoney(cost.actual)} · {Math.round(cost.actualCoverage * 100)}% known</> : 'No received orders yet'} onClick={() => nav.go('bom')} />
+          <Kpi label="Cost per unit (planned)" value={money(cost?.planned)} sub={cost && cost.actualCoverage > 0 ? <>Actual so far {money(cost.actual)} · {Math.round(cost.actualCoverage * 100)}% known</> : 'No received orders yet'} onClick={() => nav.go('bom')} />
           <Kpi label="Can build now" value={bc ? bc.canBuild : '—'} sub={`from stock on hand, target ${units}`} tone={bc && bc.canBuild >= units ? 'green' : 'amber'} onClick={() => nav.go('bom')} />
           <Kpi label={`Parts short for ${units} units`} value={shortParts.length} sub="after open orders arrive" tone={shortParts.length ? 'red' : 'green'} onClick={() => nav.go('bom')} />
-          <Kpi label="Open orders" value={open.length} sub={`${fmtMoney(openValue)} on order`} onClick={() => nav.go('orders')} />
+          <Kpi label="Open orders" value={open.length} sub={`${money(openValue)} on order`} onClick={() => nav.go('orders')} />
           <Kpi label="Weight per unit" value={fmtWeight(totalGrams)} sub={topWeight && topWeight.missing > 0 ? `${topWeight.missing} part${topWeight.missing > 1 ? 's' : ''} without weight` : 'all parts weighed'} tone={topWeight && topWeight.missing > 0 ? 'amber' : undefined} onClick={() => nav.go('bom')} />
           <Kpi label="Overdue orders" value={late.length} sub={late.length ? 'past expected date' : 'all on time'} tone={late.length ? 'red' : 'green'} onClick={() => nav.go('orders')} />
         </div>
@@ -109,7 +110,7 @@ export default function Dashboard() {
                 <button key={s.id} className="block w-full text-left" onClick={() => nav.openPart(s.id)}>
                   <div className="mb-1 flex justify-between text-xs">
                     <span className="truncate text-ink-muted">{s.name}</span>
-                    <span className="num text-ink">{fmtMoney(s.value)}</span>
+                    <span className="num text-ink">{money(s.value)}</span>
                   </div>
                   <div className="h-2 rounded-full bg-alt">
                     <div className="h-2 rounded-full bg-ink" style={{ width: `${(s.value / maxSub) * 100}%` }} />
@@ -158,7 +159,7 @@ export default function Dashboard() {
                   <td><StepBar status={o.status} /></td>
                   <td><OrderStatusChip status={o.status} late={isLate(o)} /></td>
                   <td className="text-ink-subtle">{o.expectedDate ? `due ${o.expectedDate}` : ''}</td>
-                  <td className="num">{fmtMoney(orderValueIls(data, o))}</td>
+                  <td className="num">{money(orderValueIls(data, o))}</td>
                 </tr>
               ))}
             </tbody>

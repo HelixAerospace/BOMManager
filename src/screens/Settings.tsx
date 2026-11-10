@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import Papa from 'papaparse'
 import { Download, FileUp, FolderOpen, Plus, X } from 'lucide-react'
 import { useStore } from '../lib/store'
-import { useDerived } from '../lib/derived'
+import { displayCurrencyOf, useDerived } from '../lib/derived'
 import { parseInventorCsv, planImport, type ImportPlan, type ImportRow } from '../lib/importer'
 import { fmtMoney, orderValueIls, toIls } from '../lib/calc'
 import { uid } from '../lib/types'
@@ -25,11 +25,13 @@ export default function SettingsScreen() {
   const { idx, costs, actual, weights } = useDerived()
   const [newCur, setNewCur] = useState('')
 
+  const dc = displayCurrencyOf(data.settings)
+  const dRate = dc === 'ILS' ? 1 : data.settings.fx[dc]
   const exportParts = () => {
     const rows = data.parts.map((p) => ({
       'Part number': p.pn, Name: p.name, Rev: p.rev, Category: p.category, Type: idx.children.has(p.id) ? 'Assembly' : p.makeBuy === 'make' ? 'Custom' : 'Off-the-shelf',
       Supplier: idx.supplierById.get(p.supplierId ?? '')?.name ?? '', 'Supplier PN': p.supplierPn, 'Planned cost per piece': Math.round(p.plannedCost * 10000) / 10000, 'Pack price': p.packPrice ?? '', 'Pieces per pack': p.packQty ?? '', Currency: p.currency, 'Weight (g)': p.weight ?? '', 'Weight rolled up (g)': Math.round((weights.get(p.id)?.grams ?? 0) * 10) / 10,
-      'Planned (ILS, rolled up)': Math.round((costs.get(p.id)?.planned ?? 0) * 100) / 100, 'Actual (ILS)': actual.get(p.id) ? Math.round(actual.get(p.id)!.unitIls * 100) / 100 : '',
+      [`Planned (${dc}, rolled up)`]: Math.round(((costs.get(p.id)?.planned ?? 0) / dRate) * 10000) / 10000, [`Actual (${dc})`]: actual.get(p.id) ? Math.round((actual.get(p.id)!.unitIls / dRate) * 10000) / 10000 : '',
       'On hand': p.onHand, Location: p.location, 'Min stock': p.minStock, 'Spares target': p.sparesTarget, URL: p.url, Notes: p.notes,
     }))
     download(`helix-parts-${new Date().toISOString().slice(0, 10)}.csv`, '﻿' + Papa.unparse(rows))
@@ -42,7 +44,7 @@ export default function SettingsScreen() {
     const rows = data.orders.flatMap((o) => o.lines.map((l) => ({
       PO: o.number, Supplier: idx.supplierById.get(o.supplierId ?? '')?.name ?? '', Status: o.status, 'Order date': o.orderDate, Expected: o.expectedDate, Received: o.receivedDate,
       'Part number': idx.partById.get(l.partId)?.pn, Part: idx.partById.get(l.partId)?.name, Qty: l.qty, 'Qty received': l.qtyReceived, 'Unit price': l.unitPrice, Currency: o.currency,
-      'Rate to ILS': o.fxToIls, 'Order shipping/fees': o.shipping, 'Order total (ILS)': Math.round(orderValueIls(data, o) * 100) / 100, Invoice: o.invoiceNumber,
+      'Rate to ILS': o.fxToIls, 'Order shipping/fees': o.shipping, [`Order total (${dc})`]: Math.round((orderValueIls(data, o) / dRate) * 100) / 100, Invoice: o.invoiceNumber,
     })))
     download(`helix-orders-${new Date().toISOString().slice(0, 10)}.csv`, '﻿' + Papa.unparse(rows))
   }
@@ -51,6 +53,14 @@ export default function SettingsScreen() {
     <>
       <PageHeader title="Settings" />
       <div className="grid max-w-5xl gap-5 p-6 lg:grid-cols-2">
+        <Card className="p-5 lg:col-span-2">
+          <h2 className="mb-1 text-[15px] font-semibold leading-6">Show costs in</h2>
+          <p className="mb-3 text-sm text-ink-subtle">Every cost column, total and chart uses this currency. Parts and orders keep their own currency; they are converted with the rates below.</p>
+          <select className="input w-48" value={displayCurrencyOf(data.settings)} onChange={(e) => update((d) => void (d.settings.displayCurrency = e.target.value))}>
+            {['USD', 'ILS', ...Object.keys(data.settings.fx).filter((c) => c !== 'USD' && c !== 'ILS')].map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </Card>
+
         <Card className="p-5">
           <h2 className="mb-1 text-[15px] font-semibold leading-6">Exchange rates</h2>
           <p className="mb-3 text-sm text-ink-subtle">₪ per 1 unit of currency. Used for planned costs; each order locks its own rate when you mark it ordered.</p>
@@ -170,7 +180,7 @@ function InventorImport() {
     <Card className="p-5">
       <h2 className="mb-1 text-[15px] font-semibold leading-6">Import BOM from Inventor</h2>
       <p className="mb-3 text-sm text-ink-subtle">
-        In Inventor: <i>Assemble › Bill of Materials › Export</i>, choose the <b>Structured</b> view (all levels) and save as <b>.csv</b>. Parts are matched by <b>Part Number</b> (new ones take their category from the prefix, e.g. MEC-); an <i>Estimated Cost</i> column is read as ₪; add the <i>Mass</i> column to fill in part weights; you’ll see the changes before anything is applied. Lines you added by hand (glue, cables…) are kept.
+        In Inventor: <i>Assemble › Bill of Materials › Export</i>, choose the <b>Structured</b> view (all levels) and save as <b>.csv</b>. Parts are matched by <b>Part Number</b> (new ones take their category from the prefix, e.g. MEC-); an <i>Estimated Cost</i> column is read in your display currency; add the <i>Mass</i> column to fill in part weights; you’ll see the changes before anything is applied. Lines you added by hand (glue, cables…) are kept.
       </p>
       <button className="btn" onClick={() => input.current?.click()}><FileUp className="h-4 w-4" /> Choose CSV file…</button>
       <input ref={input} type="file" accept=".csv,text/csv" hidden onChange={(e) => { onFile(e.target.files?.[0]); e.target.value = '' }} />

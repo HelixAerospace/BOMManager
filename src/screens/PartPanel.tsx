@@ -2,7 +2,7 @@ import { Trash2, ExternalLink } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useStore } from '../lib/store'
 import { useNav } from '../lib/nav'
-import { useDerived } from '../lib/derived'
+import { useDerived, useMoney } from '../lib/derived'
 import { fmtMoney, fmtNum, fmtWeight, stockState, toIls } from '../lib/calc'
 import { type Part, uid } from '../lib/types'
 import { Attachments, Field, FilterTabs, MakeBuyChip, NumInput, OrderStatusChip, SidePanel, StockChip } from '../components/ui'
@@ -10,6 +10,7 @@ import { Attachments, Field, FilterTabs, MakeBuyChip, NumInput, OrderStatusChip,
 export const CURRENCIES = ['ILS', 'USD', 'EUR', 'CNY', 'GBP']
 
 export default function PartPanel({ id }: { id: string }) {
+  const { fmt: money, sym, cur: dispCur } = useMoney()
   const { data, update } = useStore()
   const nav = useNav()
   const { idx, costs, actual, onOrder, weights } = useDerived()
@@ -68,8 +69,8 @@ export default function PartPanel({ id }: { id: string }) {
       }
     >
       <div className="grid grid-cols-5 gap-3 rounded-lg bg-alt p-3 text-sm">
-        <Stat label="Planned unit cost" value={fmtMoney(cost?.planned)} />
-        <Stat label="Actual unit cost" value={isAsm ? (cost && cost.actualCoverage > 0 ? fmtMoney(cost.actual) : '—') : a ? fmtMoney(a.unitIls) : '—'} sub={a ? `last: ${a.orderNumber}` : isAsm && cost ? `${Math.round(cost.actualCoverage * 100)}% known` : undefined} />
+        <Stat label="Planned unit cost" value={money(cost?.planned)} />
+        <Stat label="Actual unit cost" value={isAsm ? (cost && cost.actualCoverage > 0 ? money(cost.actual) : '—') : a ? money(a.unitIls) : '—'} sub={a ? `last: ${a.orderNumber}` : isAsm && cost ? `${Math.round(cost.actualCoverage * 100)}% known` : undefined} />
         <Stat label="On hand" value={isAsm ? '—' : fmtNum(p.onHand)} sub={p.location || undefined} />
         <Stat label="On order" value={fmtNum(onOrder.get(id) ?? 0)} />
         <Stat label="Weight" value={fmtWeight(isAsm ? w?.grams : p.weight)} sub={isAsm && w && w.missing ? `${w.missing} missing` : undefined} />
@@ -135,7 +136,7 @@ export default function PartPanel({ id }: { id: string }) {
           </Field>
           <div className="col-span-2 self-end pb-2 text-sm text-ink-muted">
             {packMode && !isAsm && p.packQty ? <>= <b className="text-ink">{fmtMoney(p.plannedCost, p.currency)}</b> per piece</> : null}
-            {p.currency !== 'ILS' && p.plannedCost ? <div className="text-xs text-ink-subtle">≈ {fmtMoney(toIls(data, p.plannedCost, p.currency))}{packMode ? ' per piece' : ''}</div> : null}
+            {p.currency !== dispCur && p.plannedCost ? <div className="text-xs text-ink-subtle">≈ {money(toIls(data, p.plannedCost, p.currency))}{packMode ? ' per piece' : ''}</div> : null}
           </div>
           <Field label="Supplier" className="col-span-3">
             <select className="input" value={p.supplierId ?? ''} onChange={(e) => set('supplierId', e.target.value || null)}>

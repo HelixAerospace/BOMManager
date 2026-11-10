@@ -93,7 +93,7 @@ export function planImport(data: BomData, rows: ImportRow[], targetId: ID, defau
     const category = isAsm ? 'ASM' : known ? prefix : defaultCategory
     const p: Part = {
       id: uid(), pn: r.pn, name: r.desc || r.pn, category, makeBuy: isAsm || category === 'MEC' ? 'make' : 'buy', rev: r.rev || 'A', unit: 'pcs',
-      plannedCost: r.cost ?? 0, currency: data.settings.baseCurrency, supplierId: null, supplierPn: '', url: '', leadTimeDays: null,
+      plannedCost: r.cost ?? 0, currency: data.settings.displayCurrency || 'USD', supplierId: null, supplierPn: '', url: '', leadTimeDays: null,
       onHand: 0, location: '', minStock: 0, sparesTarget: 0, notes: r.vendor ? `Vendor (from Inventor): ${r.vendor}` : '', files: [], createdAt: new Date().toISOString(),
       weight: isAsm ? null : r.mass,
     }

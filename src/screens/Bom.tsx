@@ -2,13 +2,14 @@ import { Fragment, useMemo, useState } from 'react'
 import { ChevronDown, ChevronRight, ListTree, Plus, ShoppingCart, Trash2, ChevronsDownUp, ChevronsUpDown } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useNav } from '../lib/nav'
-import { useDerived } from '../lib/derived'
+import { useDerived, useMoney } from '../lib/derived'
 import { availability, buildCheck, createsCycle, fmtMoney, fmtNum, fmtWeight, nextPoNumber, roundToPacks } from '../lib/calc'
 import { type ID, type Part, uid } from '../lib/types'
 import { AvailabilityChip, Empty, FilterTabs, MakeBuyChip, NumInput, PageHeader, PartPicker } from '../components/ui'
 import { newPart } from './Parts'
 
 export default function BomScreen() {
+  const { fmt: money, sym, cur: dispCur } = useMoney()
   const { data, update, notify } = useStore()
   const nav = useNav()
   const { idx, costs, actual, weights, topAssemblies } = useDerived()
@@ -128,7 +129,7 @@ export default function BomScreen() {
     <>
       <PageHeader
         title="BOM"
-        subtitle={<>{top.pn} · rev {top.rev} · planned {fmtMoney(topCost?.planned)} per unit{topCost && topCost.actualCoverage > 0 && <> · actual {fmtMoney(topCost.actual)} ({Math.round(topCost.actualCoverage * 100)}% known)</>} · {fmtWeight(topWeight?.grams)}{topWeight && topWeight.missing > 0 && <span className="text-caution"> ({topWeight.missing} without weight)</span>}</>}
+        subtitle={<>{top.pn} · rev {top.rev} · planned {money(topCost?.planned)} per unit{topCost && topCost.actualCoverage > 0 && <> · actual {money(topCost.actual)} ({Math.round(topCost.actualCoverage * 100)}% known)</>} · {fmtWeight(topWeight?.grams)}{topWeight && topWeight.missing > 0 && <span className="text-caution"> ({topWeight.missing} without weight)</span>}</>}
         actions={
           <>
             <select className="input w-auto" value={top.id} onChange={(e) => setSel(e.target.value)}>
@@ -164,9 +165,9 @@ export default function BomScreen() {
                     <th>Type</th>
                     <th className="num">Qty</th>
                     <th className="num">Total qty</th>
-                    <th className="num">Unit cost (₪)</th>
-                    <th className="num">Ext. cost (₪)</th>
-                    <th className="num">Actual unit (₪)</th>
+                    <th className="num">Unit cost ({sym})</th>
+                    <th className="num">Ext. cost ({sym})</th>
+                    <th className="num">Actual unit ({sym})</th>
                     <th className="num">On hand</th>
                     <th>For {units} units</th>
                     <th className="w-16"></th>
@@ -216,9 +217,9 @@ export default function BomScreen() {
                           ) : '—'}
                         </td>
                         <td className="num text-ink-subtle">{isTop ? '' : fmtNum(r.extQty)}</td>
-                        <td className="num">{fmtMoney(c?.planned)}</td>
-                        <td className="num font-medium">{isTop ? fmtMoney(c?.planned) : fmtMoney((c?.planned ?? 0) * r.qty)}</td>
-                        <td className="num text-ink-subtle">{r.hasKids ? (c && c.actualCoverage > 0 ? fmtMoney(c.actual) : '') : a ? <span title={`from ${a.orderNumber}`}>{fmtMoney(a.unitIls)}</span> : ''}</td>
+                        <td className="num">{money(c?.planned)}</td>
+                        <td className="num font-medium">{isTop ? money(c?.planned) : money((c?.planned ?? 0) * r.qty)}</td>
+                        <td className="num text-ink-subtle">{r.hasKids ? (c && c.actualCoverage > 0 ? money(c.actual) : '') : a ? <span title={`from ${a.orderNumber}`}>{money(a.unitIls)}</span> : ''}</td>
                         <td className="num">{r.hasKids ? '' : fmtNum(r.part.onHand)}</td>
                         <td>{!r.hasKids && av && <AvailabilityChip a={availability(av)} />}</td>
 </>) : (<>
@@ -278,7 +279,7 @@ export default function BomScreen() {
               </tbody>
             </table>
           </div>
-          <p className="mt-2 text-xs text-ink-subtle">{view === 'tree' ? 'Hover a row to add or remove parts. Costs are converted to ₪ with the rates in Settings; “Actual” comes from received orders including shipping.' : 'Weights come from each part (grams per unit). Assemblies add up their parts plus any extra weight entered on the assembly. Click a part to enter its weight.'}</p>
+          <p className="mt-2 text-xs text-ink-subtle">{view === 'tree' ? `Hover a row to add or remove parts. Costs are shown in ${dispCur}, converted with the rates in Settings; “Actual” comes from received orders including shipping.` : 'Weights come from each part (grams per unit). Assemblies add up their parts plus any extra weight entered on the assembly. Click a part to enter its weight.'}</p>
         </div>
       ) : (
         <div className="p-6 pt-3">

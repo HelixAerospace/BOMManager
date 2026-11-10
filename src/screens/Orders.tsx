@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Paperclip, Plus, ShoppingCart } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useNav } from '../lib/nav'
-import { useDerived } from '../lib/derived'
+import { useDerived, useMoney } from '../lib/derived'
 import { fmtMoney, isLate, isOpen, nextPoNumber, orderValueIls } from '../lib/calc'
 import { type BomData, type Order, uid } from '../lib/types'
 import { Empty, FilterTabs, OrderStatusChip, PageHeader, SearchBox, StepBar } from '../components/ui'
@@ -19,6 +19,7 @@ export function newOrder(data: BomData, supplierId: string | null = null): Order
 type F = 'open' | 'draft' | 'late' | 'received' | 'all'
 
 export default function OrdersScreen() {
+  const { fmt: money, sym, cur: dispCur } = useMoney()
   const { data, update } = useStore()
   const nav = useNav()
   const { idx } = useDerived()
@@ -66,7 +67,7 @@ export default function OrdersScreen() {
           ) : (
             <table className="grid-table">
               <thead>
-                <tr><th>PO</th><th>Supplier</th><th>Progress</th><th>Status</th><th>Ordered</th><th>Expected</th><th className="num">Items</th><th className="num">Value</th><th className="num">Value (₪)</th><th></th></tr>
+                <tr><th>PO</th><th>Supplier</th><th>Progress</th><th>Status</th><th>Ordered</th><th>Expected</th><th className="num">Items</th><th className="num">Value</th><th className="num">Value ({sym})</th><th></th></tr>
               </thead>
               <tbody>
                 {list.map((o) => {
@@ -81,7 +82,7 @@ export default function OrdersScreen() {
                       <td className={isLate(o) ? 'font-medium text-warning' : 'text-ink-subtle'}>{o.expectedDate}</td>
                       <td className="num">{o.lines.length}</td>
                       <td className="num text-ink-subtle">{fmtMoney(goods, o.currency)}</td>
-                      <td className="num">{fmtMoney(orderValueIls(data, o))}</td>
+                      <td className="num">{money(orderValueIls(data, o))}</td>
                       <td>{o.files.length > 0 && <Paperclip className="h-3.5 w-3.5 text-ink-subtle" />}</td>
                     </tr>
                   )
