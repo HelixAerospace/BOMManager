@@ -1,0 +1,204 @@
+import { Trash2, ExternalLink } from 'lucide-react'
+import type { ReactNode } from 'react'
+import { useStore } from '../lib/store'
+import { useNav } from '../lib/nav'
+import { useDerived } from '../lib/derived'
+import { fmtMoney, fmtNum, stockState, toIls } from '../lib/calc'
+import { type Part, uid } from '../lib/types'
+import { Attachments, Field, MakeBuyChip, NumInput, OrderStatusChip, SidePanel, StockChip } from '../components/ui'
+
+export const CURRENCIES = ['ILS', 'USD', 'EUR', 'CNY', 'GBP']
+
+export default function PartPanel({ id }: { id: string }) {
+  const { data, update } = useStore()
+  const nav = useNav()
+  const { idx, costs, actual, onOrder } = useDerived()
+  const p = idx.partById.get(id)
+  if (!p) return null
+  const set = <K extends keyof Part>(k: K, v: Part[K]) => update((d) => void (d.parts.find((x) => x.id === id)![k] = v))
+  const isAsm = idx.children.has(id)
+  const cost = costs.get(id)
+  const a = actual.get(id)
+  const usedIn = idx.parents.get(id) ?? []
+  const orderLines = data.orders.flatMap((o) => o.lines.filter((l) => l.partId === id).map((l) => ({ o, l }))).sort((x, y) => (y.o.orderDate || '9').localeCompare(x.o.orderDate || '9'))
+  const moves = data.stockMoves.filter((m) => m.partId === id).slice(-8).reverse()
+
+  const setOnHand = (v: number) =>
+    update((d) => {
+      const part = d.parts.find((x) => x.id === id)!
+      const delta = v - part.onHand
+      if (!delta) return
+      part.onHand = v
+      d.stockMoves.push({ id: uid(), partId: id, delta, reason: 'adjust', ref: 'Manual adjustment', date: new Date().toISOString() })
+    })
+
+  const remove = () => {
+    const inOrders = orderLines.length
+    const msg = `Delete ${p.pn} ${p.name}?` + (usedIn.length ? `\nIt will be removed from ${usedIn.length} assembl${usedIn.length > 1 ? 'ies' : 'y'}.` : '') + (isAsm ? '\nIts own BOM lines will be deleted (the child parts are kept).' : '')
+    if (inOrders) return alert(`${p.pn} appears in ${inOrders} order line(s). Remove it from those orders first.`)
+    if (!confirm(msg)) return
+    update((d) => {
+      d.parts = d.parts.filter((x) => x.id !== id)
+      d.bom = d.bom.filter((l) => l.parentId !== id && l.childId !== id)
+    })
+    nav.openPart(null)
+  }
+
+  return (
+    <SidePanel
+      wide
+      onClose={() => nav.openPart(null)}
+      title={<span className="flex items-center gap-2"><span className="font-mono text-sm text-zinc-500">{p.pn}</span> {p.name || 'Unnamed part'}</span>}
+      subtitle={<span className="flex items-center gap-2">{isAsm ? 'Assembly' : <MakeBuyChip v={p.makeBuy} />}{!isAsm && <StockChip s={stockState(p)} />} rev {p.rev}</span>}
+      footer={
+        <>
+          <button className="btn-ghost text-red-600" onClick={remove}><Trash2 className="h-4 w-4" /> Delete part</button>
+          <button className="btn" onClick={() => nav.openPart(null)}>Close</button>
+        </>
+      }
+    >
+      <div className="grid grid-cols-4 gap-3 rounded-lg bg-zinc-50 p-3 text-sm">
+        <Stat label="Planned unit cost" value={fmtMoney(cost?.planned)} />
+        <Stat label="Actual unit cost" value={isAsm ? (cost && cost.actualCoverage > 0 ? fmtMoney(cost.actual) : '—') : a ? fmtMoney(a.unitIls) : '—'} sub={a ? `last: ${a.orderNumber}` : isAsm && cost ? `${Math.round(cost.actualCoverage * 100)}% known` : undefined} />
+        <Stat label="On hand" value={isAsm ? '—' : fmtNum(p.onHand)} sub={p.location || undefined} />
+        <Stat label="On order" value={fmtNum(onOrder.get(id) ?? 0)} />
+      </div>
+
+      <Section title="Details">
+        <div className="grid grid-cols-6 gap-3">
+          <Field label="Part number" className="col-span-2"><input className="input font-mono" value={p.pn} onChange={(e) => set('pn', e.target.value)} /></Field>
+          <Field label="Name" className="col-span-3"><input autoFocus={!p.name} className="input" value={p.name} onChange={(e) => set('name', e.target.value)} /></Field>
+          <Field label="Rev"><input className="input" value={p.rev} onChange={(e) => set('rev', e.target.value)} /></Field>
+          <Field label="Category" className="col-span-2">
+            <select className="input" value={p.category} onChange={(e) => set('category', e.target.value)}>
+              {data.settings.categories.map((c) => <option key={c.prefix} value={c.prefix}>{c.prefix} · {c.name}</option>)}
+            </select>
+          </Field>
+          <Field label="Make or buy" className="col-span-2">
+            <select className="input" value={p.makeBuy} onChange={(e) => set('makeBuy', e.target.value as Part['makeBuy'])}>
+              <option value="make">Custom (made to my drawing)</option>
+              <option value="buy">Off-the-shelf</option>
+            </select>
+          </Field>
+          <Field label="Unit" className="col-span-2"><input className="input" value={p.unit} onChange={(e) => set('unit', e.target.value)} /></Field>
+        </div>
+      </Section>
+
+      <Section title="Cost & sourcing">
+        <div className="grid grid-cols-6 gap-3">
+          <Field label={isAsm ? 'Extra cost per unit (labour etc.)' : 'Planned unit cost'} className="col-span-2"><NumInput value={p.plannedCost} min={0} onChange={(v) => set('plannedCost', v)} /></Field>
+          <Field label="Currency">
+            <select className="input" value={p.currency} onChange={(e) => set('currency', e.target.value)}>
+              {[...new Set([...CURRENCIES, ...Object.keys(data.settings.fx)])].map((c) => <option key={c}>{c}</option>)}
+            </select>
+          </Field>
+          <div className="col-span-3 self-end pb-2 text-xs text-zinc-500">{p.currency !== 'ILS' && p.plannedCost ? `≈ ${fmtMoney(toIls(data, p.plannedCost, p.currency))}` : ''}</div>
+          <Field label="Supplier" className="col-span-3">
+            <select className="input" value={p.supplierId ?? ''} onChange={(e) => set('supplierId', e.target.value || null)}>
+              <option value="">—</option>
+              {data.suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </Field>
+          <Field label="Supplier part number" className="col-span-2"><input className="input" value={p.supplierPn} onChange={(e) => set('supplierPn', e.target.value)} /></Field>
+          <Field label="Lead time (days)"><NumInput value={p.leadTimeDays} min={0} onChange={(v) => set('leadTimeDays', v)} /></Field>
+          <Field label="Product link" className="col-span-6">
+            <div className="flex gap-2">
+              <input className="input" value={p.url} placeholder="https://" onChange={(e) => set('url', e.target.value)} />
+              {/^https?:\/\//.test(p.url) && <a className="btn" href={p.url} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" /></a>}
+            </div>
+          </Field>
+        </div>
+      </Section>
+
+      {!isAsm && (
+        <Section title="Stock & spares">
+          <div className="grid grid-cols-4 gap-3">
+            <Field label="On hand"><NumInput value={p.onHand} onChange={setOnHand} /></Field>
+            <Field label="Location"><input className="input" value={p.location} placeholder="Shelf B2" onChange={(e) => set('location', e.target.value)} /></Field>
+            <Field label="Reorder below (min)"><NumInput value={p.minStock} min={0} onChange={(v) => set('minStock', v)} /></Field>
+            <Field label="Spares to keep"><NumInput value={p.sparesTarget} min={0} onChange={(v) => set('sparesTarget', v)} /></Field>
+          </div>
+          {moves.length > 0 && (
+            <div className="mt-3 text-xs text-zinc-500">
+              {moves.map((m) => (
+                <div key={m.id} className="flex justify-between border-b border-zinc-100 py-1">
+                  <span>{new Date(m.date).toLocaleDateString()} · {m.ref}</span>
+                  <span className={`num ${m.delta > 0 ? 'text-emerald-600' : 'text-red-600'}`}>{m.delta > 0 ? '+' : ''}{fmtNum(m.delta)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </Section>
+      )}
+
+      {usedIn.length > 0 && (
+        <Section title="Used in">
+          <ul className="space-y-1 text-sm">
+            {usedIn.map((u) => {
+              const parent = idx.partById.get(u.parentId)
+              return parent && (
+                <li key={u.lineId}><button className="hover:underline" onClick={() => nav.openPart(parent.id)}><span className="font-mono text-xs text-zinc-500">{parent.pn}</span> {parent.name}</button> <span className="text-zinc-500">× {fmtNum(u.qty)}</span></li>
+              )
+            })}
+          </ul>
+        </Section>
+      )}
+
+      {isAsm && (
+        <Section title="Contains">
+          <ul className="space-y-1 text-sm">
+            {(idx.children.get(id) ?? []).map((k) => {
+              const c = idx.partById.get(k.childId)
+              return c && <li key={k.lineId}><button className="hover:underline" onClick={() => nav.openPart(c.id)}><span className="font-mono text-xs text-zinc-500">{c.pn}</span> {c.name}</button> <span className="text-zinc-500">× {fmtNum(k.qty)}</span></li>
+            })}
+          </ul>
+        </Section>
+      )}
+
+      {orderLines.length > 0 && (
+        <Section title="Order history">
+          <table className="w-full text-sm">
+            <tbody>
+              {orderLines.map(({ o, l }) => (
+                <tr key={l.id} className="cursor-pointer border-b border-zinc-100 hover:bg-zinc-50" onClick={() => { nav.openPart(null); nav.openOrder(o.id) }}>
+                  <td className="py-1.5 font-mono text-xs">{o.number}</td>
+                  <td className="text-zinc-500">{idx.supplierById.get(o.supplierId ?? '')?.name}</td>
+                  <td className="text-zinc-500">{o.orderDate}</td>
+                  <td className="num">{fmtNum(l.qty)} × {fmtMoney(l.unitPrice, o.currency)}</td>
+                  <td className="pl-3"><OrderStatusChip status={o.status} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Section>
+      )}
+
+      <Section title="Files (drawings, datasheets, STEP)">
+        <Attachments files={p.files} group={p.pn} onChange={(f) => set('files', f)} />
+      </Section>
+
+      <Section title="Notes">
+        <textarea className="input min-h-20" value={p.notes} onChange={(e) => set('notes', e.target.value)} />
+      </Section>
+    </SidePanel>
+  )
+}
+
+export function Section({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="mt-6">
+      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">{title}</h3>
+      {children}
+    </section>
+  )
+}
+
+function Stat({ label, value, sub }: { label: string; value: ReactNode; sub?: string }) {
+  return (
+    <div>
+      <div className="text-xs text-zinc-500">{label}</div>
+      <div className="num text-left text-base font-semibold">{value}</div>
+      {sub && <div className="text-xs text-zinc-400">{sub}</div>}
+    </div>
+  )
+}

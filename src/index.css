@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+html, body, #root { height: 100%; }
+body { @apply bg-zinc-50 text-zinc-900 antialiased; font-size: 14px; }
+.num { font-variant-numeric: tabular-nums; text-align: right; }
+input, select, textarea { @apply outline-none; }
+@layer components {
+.input { @apply w-full rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-sm focus:border-zinc-400 focus:ring-2 focus:ring-zinc-200; }
+.cell-input { @apply w-full rounded border border-transparent bg-transparent px-1.5 py-0.5 hover:border-zinc-200 focus:border-zinc-400 focus:bg-white; }
+.btn { @apply whitespace-nowrap; } .btn { @apply inline-flex items-center gap-1.5 rounded-md border border-zinc-200 bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50; }
+.btn-primary { @apply whitespace-nowrap; } .btn-primary { @apply inline-flex items-center gap-1.5 rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50; }
+.btn-ghost { @apply inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-zinc-600 hover:bg-zinc-100; }
+.label { @apply mb-1 block text-xs font-medium text-zinc-500; }
+}
+table.grid-table { @apply w-full border-collapse text-sm; }
+table.grid-table th { @apply sticky top-0 z-10 border-b border-zinc-200 bg-zinc-50 px-3 py-2 text-left text-xs font-medium text-zinc-500 whitespace-nowrap; }
+table.grid-table td { @apply border-b border-zinc-100 px-3 py-1.5 align-middle; }
+table.grid-table tr.clickable:hover td { @apply bg-zinc-50 cursor-pointer; }
+
+.font-mono { white-space: nowrap; }
