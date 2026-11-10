@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { useStore } from '../lib/store'
 import { useNav } from '../lib/nav'
 import { useDerived, useMoney } from '../lib/derived'
-import { fmtMoney, fmtNum, fmtWeight, stockState, toIls } from '../lib/calc'
+import { fmtMoney, fmtNum, fmtWeight, nextPn, stockState, toIls } from '../lib/calc'
 import { type Part, uid } from '../lib/types'
 import { Attachments, Field, FilterTabs, MakeBuyChip, NumInput, OrderStatusChip, SidePanel, StockChip } from '../components/ui'
 
@@ -24,6 +24,18 @@ export default function PartPanel({ id }: { id: string }) {
   const usedIn = idx.parents.get(id) ?? []
   const orderLines = data.orders.flatMap((o) => o.lines.filter((l) => l.partId === id).map((l) => ({ o, l }))).sort((x, y) => (y.o.orderDate || '9').localeCompare(x.o.orderDate || '9'))
   const moves = data.stockMoves.filter((m) => m.partId === id).slice(-8).reverse()
+
+  // Switching category gives the part the next free number in the new category (e.g. PUR-00012 → MEC-00004),
+  // as long as its number is still an automatic one (PREFIX-digits). A hand-typed part number is kept.
+  const changeCategory = (prefix: string) =>
+    update((d) => {
+      const x = d.parts.find((y) => y.id === id)!
+      const auto = /^[A-Z0-9]+-\d+$/i.test(x.pn.trim())
+      x.category = prefix
+      if (auto && !x.pn.toUpperCase().startsWith(prefix.toUpperCase() + '-')) {
+        x.pn = nextPn({ ...d, parts: d.parts.filter((y) => y.id !== id) } as never, prefix)
+      }
+    })
 
   const packMode = p.packQty != null
   const setPack = (price: number, qty: number) =>
@@ -78,7 +90,7 @@ export default function PartPanel({ id }: { id: string }) {
           <Field label="Name" className="col-span-3"><input autoFocus={!p.name} className="input" value={p.name} onChange={(e) => set('name', e.target.value)} /></Field>
           <Field label="Rev"><input className="input" value={p.rev} onChange={(e) => set('rev', e.target.value)} /></Field>
           <Field label="Category" className="col-span-2">
-            <select className="input" value={p.category} onChange={(e) => set('category', e.target.value)}>
+            <select className="input" value={p.category} onChange={(e) => changeCategory(e.target.value)}>
               {data.settings.categories.map((c) => <option key={c.prefix} value={c.prefix}>{c.prefix} · {c.name}</option>)}
             </select>
           </Field>
