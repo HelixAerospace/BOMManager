@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Boxes, Building2, FolderOpen, LayoutDashboard, ListTree, Loader2, RefreshCw, Save, Settings as SettingsIcon, ShoppingCart, Warehouse, CheckCircle2, Search, AlertTriangle, Sparkles } from 'lucide-react'
+import { Boxes, Building2, FolderOpen, LayoutDashboard, ListTree, Loader2, RefreshCw, Save, Settings as SettingsIcon, ShoppingCart, Warehouse, CheckCircle2, Search, AlertTriangle } from 'lucide-react'
 import { useStore } from './lib/store'
 import { useNav, type Screen } from './lib/nav'
 import { fsSupported } from './lib/storage'
 import { Modal } from './components/ui'
+import { Logo, ThemeToggle } from './components/brand'
 import Dashboard from './screens/Dashboard'
 import BomScreen from './screens/Bom'
 import PartsScreen from './screens/Parts'
@@ -26,7 +27,7 @@ const NAV: { id: Screen; label: string; icon: typeof Boxes }[] = [
 
 export default function App() {
   const s = useStore()
-  if (s.mode === 'loading') return <Centered><Loader2 className="h-5 w-5 animate-spin text-zinc-400" /></Centered>
+  if (s.mode === 'loading') return <Centered><Loader2 className="h-5 w-5 animate-spin text-ink-subtle" /></Centered>
   if (s.mode !== 'ready') return <Welcome />
   return <Shell />
 }
@@ -40,36 +41,36 @@ function Welcome() {
   const supported = fsSupported()
   return (
     <Centered>
-      <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm">
-        <div className="mb-6 flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-900 text-white"><ListTree className="h-4 w-4" /></div>
-          <div className="text-lg font-semibold">Helix BOM</div>
+      <div className="w-full max-w-md rounded-lg border border-hairline bg-surface p-10">
+        <div className="mb-8">
+          <Logo height={48} />
+          <div className="mt-4 text-[19px] font-semibold leading-[26px]">BOM Manager</div>
         </div>
         {s.mode === 'reconnect' && (
           <>
-            <p className="mb-4 text-sm text-zinc-600">Click to reopen your data folder <b>{s.folderName}</b>. The browser asks once per visit unless you choose “Allow on every visit”.</p>
-            <button className="btn-primary w-full justify-center py-2" onClick={s.reconnect}><FolderOpen className="h-4 w-4" /> Open {s.folderName}</button>
+            <p className="mb-4 text-sm text-ink-muted">Click to reopen your data folder <b>{s.folderName}</b>. The browser asks once per visit unless you choose “Allow on every visit”.</p>
+            <button className="btn-primary w-full justify-center" onClick={s.reconnect}><FolderOpen className="h-4 w-4" /> Open {s.folderName}</button>
             <button className="btn-ghost mt-2 w-full justify-center" onClick={s.openFolder}>Choose a different folder</button>
           </>
         )}
         {s.mode === 'init-folder' && (
           <>
-            <p className="mb-4 text-sm text-zinc-600">The folder <b>{s.folderName}</b> has no BOM data yet. How do you want to start?</p>
+            <p className="mb-4 text-sm text-ink-muted">The folder <b>{s.folderName}</b> has no BOM data yet. How do you want to start?</p>
             <div className="space-y-2">
-              <button className="btn-primary w-full justify-center py-2" onClick={() => s.initFolder(false)}>Start empty</button>
-              <button className="btn w-full justify-center py-2" onClick={() => s.initFolder(true)}><Sparkles className="h-4 w-4" /> Start with example data</button>
+              <button className="btn-primary w-full justify-center" onClick={() => s.initFolder(false)}>Start empty</button>
+              <button className="btn w-full justify-center" onClick={() => s.initFolder(true)}>Start with example data</button>
               <button className="btn-ghost w-full justify-center" onClick={s.openFolder}>Choose a different folder</button>
             </div>
           </>
         )}
         {s.mode === 'welcome' && (
           <>
-            <p className="mb-2 text-sm text-zinc-600">Your BOM lives in a folder you choose — for example <b>OneDrive › Helix BOM</b>. OneDrive keeps it in sync between your computers.</p>
-            <p className="mb-5 text-sm text-zinc-500">Nothing is uploaded anywhere else.</p>
+            <p className="mb-2 text-sm text-ink-muted">Your BOM lives in a folder you choose — for example <b>OneDrive › Helix BOM</b>. OneDrive keeps it in sync between your computers.</p>
+            <p className="mb-5 text-sm text-ink-subtle">Nothing is uploaded anywhere else.</p>
             {supported ? (
-              <button className="btn-primary w-full justify-center py-2" onClick={s.openFolder}><FolderOpen className="h-4 w-4" /> Choose data folder</button>
+              <button className="btn-primary w-full justify-center" onClick={s.openFolder}><FolderOpen className="h-4 w-4" /> Choose data folder</button>
             ) : (
-              <div className="rounded-md bg-amber-50 p-3 text-sm text-amber-800">This browser can’t open local folders. Use <b>Chrome</b> or <b>Edge</b> on a computer.</div>
+              <div className="rounded-lg bg-caution-bg p-3 text-sm text-caution">This browser can’t open local folders. Use <b>Chrome</b> or <b>Edge</b> on a computer.</div>
             )}
             <button className="btn-ghost mt-2 w-full justify-center" onClick={s.startDemo}>Try it with example data (nothing saved)</button>
           </>
@@ -99,35 +100,32 @@ function Shell() {
 
   return (
     <div className="flex h-full">
-      <aside className="flex w-52 shrink-0 flex-col border-r border-zinc-200 bg-white">
-        <div className="flex items-center gap-2 px-4 py-4">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-zinc-900 text-white"><ListTree className="h-4 w-4" /></div>
-          <div className="font-semibold">Helix BOM</div>
+      <aside className="flex w-60 shrink-0 flex-col border-r border-hairline bg-side">
+        <div className="px-5 pb-4 pt-5">
+          <Logo height={40} />
+          <div className="mt-4 text-xs font-medium text-ink-subtle">BOM Manager</div>
         </div>
-        <button onClick={() => setPalette(true)} className="mx-3 mb-3 flex items-center gap-2 rounded-md border border-zinc-200 px-2.5 py-1.5 text-sm text-zinc-400 hover:bg-zinc-50">
-          <Search className="h-4 w-4" /> Search <kbd className="ml-auto rounded bg-zinc-100 px-1 text-[10px] text-zinc-500">Ctrl K</kbd>
+        <button onClick={() => setPalette(true)} className="mx-3 mb-4 flex h-9 items-center gap-2 rounded-lg border border-hairline bg-alt px-3 text-sm text-ink-subtle hover:border-control">
+          <Search className="h-4 w-4" /> Search <kbd className="ml-auto rounded border border-hairline bg-surface px-1.5 font-mono text-xs text-ink-subtle">Ctrl K</kbd>
         </button>
-        <nav className="flex-1 space-y-0.5 px-2">
+        <nav className="flex-1 space-y-0.5 px-3" aria-label="Main">
           {NAV.map((n) => (
-            <button key={n.id} onClick={() => nav.go(n.id)} className={`flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm ${nav.screen === n.id ? 'bg-zinc-100 font-medium text-zinc-900' : 'text-zinc-600 hover:bg-zinc-50'}`}>
-              <n.icon className="h-4 w-4" /> {n.label}
-            </button>
+            <NavItem key={n.id} current={nav.screen === n.id} onClick={() => nav.go(n.id)} icon={<n.icon className="h-4 w-4" />} label={n.label} />
           ))}
         </nav>
-        <div className="space-y-2 border-t border-zinc-200 p-3">
+        <div className="space-y-3 border-t border-hairline p-3">
           <SaveButton />
-          <button onClick={() => nav.go('settings')} className={`flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm ${nav.screen === 'settings' ? 'bg-zinc-100 font-medium' : 'text-zinc-600 hover:bg-zinc-50'}`}>
-            <SettingsIcon className="h-4 w-4" /> Settings
-          </button>
-          <div className="truncate px-2.5 text-xs text-zinc-400" title={s.folderName}>{s.demo ? 'Demo mode — not saved' : `Folder: ${s.folderName}`}</div>
+          <NavItem current={nav.screen === 'settings'} onClick={() => nav.go('settings')} icon={<SettingsIcon className="h-4 w-4" />} label="Settings" />
+          <ThemeToggle />
+          <div className="truncate px-2.5 text-xs text-ink-subtle" title={s.folderName}>{s.demo ? 'Demo mode: not saved' : `Folder: ${s.folderName}`}</div>
         </div>
       </aside>
 
       <main className="flex min-w-0 flex-1 flex-col">
         {s.updateAvailable && (
-          <div className="flex items-center justify-center gap-3 bg-zinc-900 px-4 py-1.5 text-sm text-white">
-            <Sparkles className="h-4 w-4" /> A new version of Helix BOM is available.
-            <button className="rounded bg-white px-2 py-0.5 text-xs font-medium text-zinc-900" onClick={() => (s.dirty ? s.save().then(() => location.reload()) : location.reload())}>
+          <div className="flex items-center justify-center gap-3 bg-ink px-4 py-1.5 text-sm text-on-ink">
+            A new version of the BOM Manager is available.
+            <button className="rounded bg-surface px-2 py-0.5 text-xs font-medium text-ink" onClick={() => (s.dirty ? s.save().then(() => location.reload()) : location.reload())}>
               {s.dirty ? 'Save & reload' : 'Reload'}
             </button>
           </div>
@@ -142,8 +140,21 @@ function Shell() {
       {nav.supplierId && <SupplierPanel id={nav.supplierId} />}
       {palette && <Palette onClose={() => setPalette(false)} />}
       {s.conflict && <ConflictDialog />}
-      {s.toast && <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-lg bg-zinc-900 px-4 py-2 text-sm text-white shadow-lg"><CheckCircle2 className="h-4 w-4" /> {s.toast}</div>}
+      {s.toast && <div role="status" className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-lg border border-ink bg-ink px-4 py-2 text-sm text-on-ink"><CheckCircle2 className="h-4 w-4" /> {s.toast}</div>}
     </div>
+  )
+}
+
+/** NavTree item style: current item is SemiBold ui-accent on ui-accent-tint. */
+function NavItem({ current, onClick, icon, label }: { current: boolean; onClick: () => void; icon: React.ReactNode; label: string }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-current={current ? 'page' : undefined}
+      className={`flex h-9 w-full items-center gap-2.5 rounded-md px-2.5 text-sm ${current ? 'bg-accent-tint font-semibold text-accent' : 'text-ink-muted hover:bg-alt hover:text-ink'}`}
+    >
+      {icon} {label}
+    </button>
   )
 }
 
@@ -156,11 +167,11 @@ function SaveButton() {
       </button>
     )
   return (
-    <div className="flex items-center gap-2 px-2.5 py-1.5 text-xs text-zinc-500">
-      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+    <div className="flex items-center gap-2 px-2.5 py-1.5 text-xs text-ink-subtle">
+      <CheckCircle2 className="h-3.5 w-3.5 text-tip" />
       {s.demo ? 'Demo data' : `Saved ${s.lastSaved ? new Date(s.lastSaved).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : ''}`}
       {!s.demo && (
-        <button className="ml-auto text-zinc-400 hover:text-zinc-700" title="Reload from folder" onClick={s.reload}><RefreshCw className="h-3.5 w-3.5" /></button>
+        <button className="ml-auto text-ink-subtle hover:text-ink" title="Reload from folder" onClick={s.reload}><RefreshCw className="h-3.5 w-3.5" /></button>
       )}
     </div>
   )
@@ -181,8 +192,8 @@ function ConflictDialog() {
         </>
       }
     >
-      <div className="flex gap-3 text-sm text-zinc-600">
-        <AlertTriangle className="h-5 w-5 shrink-0 text-amber-500" />
+      <div className="flex gap-3 text-sm text-ink-muted">
+        <AlertTriangle className="h-5 w-5 shrink-0 text-caution" />
         <div>
           <b>{c.savedBy || 'Another computer'}</b> saved the BOM at {c.savedAt ? new Date(c.savedAt).toLocaleString() : 'an unknown time'}, after you opened it here, and you also have unsaved changes.
           <div className="mt-2">Overwriting keeps your version; the other version is still kept in the <code>backups</code> folder.</div>
@@ -212,10 +223,10 @@ function Palette({ onClose }: { onClose: () => void }) {
     onClose()
   }
   return (
-    <div className="fixed inset-0 z-40 flex items-start justify-center bg-zinc-900/20 pt-[15vh]" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="w-full max-w-lg overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-2xl">
-        <div className="flex items-center gap-2 border-b border-zinc-200 px-4">
-          <Search className="h-4 w-4 text-zinc-400" />
+    <div className="fixed inset-0 z-40 flex items-start justify-center bg-black/40 pt-[15vh]" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="w-full max-w-lg overflow-hidden rounded-lg border border-hairline bg-surface">
+        <div className="flex items-center gap-2 border-b border-hairline px-4">
+          <Search className="h-4 w-4 text-ink-subtle" />
           <input
             autoFocus
             className="w-full py-3 text-sm"
@@ -234,12 +245,12 @@ function Palette({ onClose }: { onClose: () => void }) {
           />
         </div>
         <div className="max-h-80 overflow-y-auto py-1">
-          {items.length === 0 && <div className="px-4 py-6 text-center text-sm text-zinc-400">No matches</div>}
+          {items.length === 0 && <div className="px-4 py-6 text-center text-sm text-ink-subtle">No matches</div>}
           {items.map((i, n) => (
-            <button key={i.key} onMouseEnter={() => setHi(n)} onClick={() => run(i)} className={`flex w-full items-center gap-3 px-4 py-2 text-left text-sm ${n === hi ? 'bg-zinc-100' : ''}`}>
-              <span className="w-16 text-xs text-zinc-400">{i.kind}</span>
+            <button key={i.key} onMouseEnter={() => setHi(n)} onClick={() => run(i)} className={`flex w-full items-center gap-3 px-4 py-2 text-left text-sm ${n === hi ? 'bg-alt' : ''}`}>
+              <span className="w-16 text-xs text-ink-subtle">{i.kind}</span>
               <span className="truncate">{i.label}</span>
-              <span className="ml-auto truncate text-xs text-zinc-400">{i.sub}</span>
+              <span className="ml-auto truncate text-xs text-ink-subtle">{i.sub}</span>
             </button>
           ))}
         </div>

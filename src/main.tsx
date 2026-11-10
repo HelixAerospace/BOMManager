@@ -4,6 +4,9 @@ import './index.css'
 import App from './App'
 import { StoreProvider } from './lib/store'
 import { NavProvider } from './lib/nav'
+import { initTheme } from './components/brand'
+
+initTheme()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

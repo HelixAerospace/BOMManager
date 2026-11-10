@@ -52,15 +52,15 @@ export default function SettingsScreen() {
       <PageHeader title="Settings" />
       <div className="grid max-w-5xl gap-5 p-6 lg:grid-cols-2">
         <Card className="p-5">
-          <h2 className="mb-1 font-medium">Exchange rates</h2>
-          <p className="mb-3 text-sm text-zinc-500">₪ per 1 unit of currency. Used for planned costs; each order locks its own rate when you mark it ordered.</p>
+          <h2 className="mb-1 text-[15px] font-semibold leading-6">Exchange rates</h2>
+          <p className="mb-3 text-sm text-ink-subtle">₪ per 1 unit of currency. Used for planned costs; each order locks its own rate when you mark it ordered.</p>
           <div className="space-y-2">
             {Object.entries(data.settings.fx).filter(([c]) => c !== 'ILS').map(([c, r]) => (
               <div key={c} className="flex items-center gap-2">
                 <span className="w-12 font-mono text-sm">{c}</span>
                 <NumInput className="input num w-32" value={r} min={0} onChange={(v) => update((d) => void (d.settings.fx[c] = v))} />
-                <span className="text-xs text-zinc-400">e.g. 100 {c} = {fmtMoney(toIls(data, 100, c))}</span>
-                <button className="ml-auto text-zinc-300 hover:text-red-600" onClick={() => update((d) => void delete d.settings.fx[c])}><X className="h-4 w-4" /></button>
+                <span className="text-xs text-ink-subtle">e.g. 100 {c} = {fmtMoney(toIls(data, 100, c))}</span>
+                <button className="ml-auto text-ink-subtle hover:text-warning" onClick={() => update((d) => void delete d.settings.fx[c])}><X className="h-4 w-4" /></button>
               </div>
             ))}
             <div className="flex gap-2 pt-1">
@@ -71,14 +71,14 @@ export default function SettingsScreen() {
         </Card>
 
         <Card className="p-5">
-          <h2 className="mb-1 font-medium">Part categories</h2>
-          <p className="mb-3 text-sm text-zinc-500">The prefix starts new part numbers, e.g. MEC-00012. Revision is kept separately.</p>
+          <h2 className="mb-1 text-[15px] font-semibold leading-6">Part categories</h2>
+          <p className="mb-3 text-sm text-ink-subtle">The prefix starts new part numbers, e.g. MEC-00012. Revision is kept separately.</p>
           <div className="space-y-2">
             {data.settings.categories.map((c, i) => (
               <div key={i} className="flex items-center gap-2">
                 <input className="input w-20 font-mono uppercase" value={c.prefix} onChange={(e) => update((d) => void (d.settings.categories[i].prefix = e.target.value.toUpperCase()))} />
                 <input className="input" value={c.name} onChange={(e) => update((d) => void (d.settings.categories[i].name = e.target.value))} />
-                <button className="text-zinc-300 hover:text-red-600" disabled={data.parts.some((p) => p.category === c.prefix)} title="Only unused categories can be removed" onClick={() => update((d) => void d.settings.categories.splice(i, 1))}><X className="h-4 w-4" /></button>
+                <button className="text-ink-subtle hover:text-warning" disabled={data.parts.some((p) => p.category === c.prefix)} title="Only unused categories can be removed" onClick={() => update((d) => void d.settings.categories.splice(i, 1))}><X className="h-4 w-4" /></button>
               </div>
             ))}
             <button className="btn" onClick={() => update((d) => void d.settings.categories.push({ prefix: 'NEW', name: 'New category' }))}><Plus className="h-4 w-4" /> Add category</button>
@@ -88,8 +88,8 @@ export default function SettingsScreen() {
         <InventorImport />
 
         <Card className="p-5">
-          <h2 className="mb-1 font-medium">Export</h2>
-          <p className="mb-3 text-sm text-zinc-500">Spreadsheet-friendly copies (open in Excel). Your full data is always the <code>helix-bom-data.json</code> file in your folder.</p>
+          <h2 className="mb-1 text-[15px] font-semibold leading-6">Export</h2>
+          <p className="mb-3 text-sm text-ink-subtle">Spreadsheet-friendly copies (open in Excel). Your full data is always the <code>helix-bom-data.json</code> file in your folder.</p>
           <div className="flex flex-wrap gap-2">
             <button className="btn" onClick={exportParts}><Download className="h-4 w-4" /> Parts</button>
             <button className="btn" onClick={exportBom}><Download className="h-4 w-4" /> BOM lines</button>
@@ -99,19 +99,19 @@ export default function SettingsScreen() {
         </Card>
 
         <Card className="p-5 lg:col-span-2">
-          <h2 className="mb-1 font-medium">Data folder</h2>
+          <h2 className="mb-1 text-[15px] font-semibold leading-6">Data folder</h2>
           {s.demo ? (
-            <p className="text-sm text-zinc-500">You’re in demo mode — nothing is saved. Choose a folder to start for real.</p>
+            <p className="text-sm text-ink-subtle">You’re in demo mode — nothing is saved. Choose a folder to start for real.</p>
           ) : (
-            <p className="text-sm text-zinc-500">
-              Using <b className="text-zinc-700">{s.folderName}</b>. It contains <code>helix-bom-data.json</code> (everything), <code>files/</code> (attachments, one folder per part or order) and <code>backups/</code> (a copy before every save, last 100 kept).
+            <p className="text-sm text-ink-subtle">
+              Using <b className="text-ink">{s.folderName}</b>. It contains <code>helix-bom-data.json</code> (everything), <code>files/</code> (attachments, one folder per part or order) and <code>backups/</code> (a copy before every save, last 100 kept).
             </p>
           )}
           <div className="mt-3 flex gap-2">
             <button className="btn" onClick={s.openFolder}><FolderOpen className="h-4 w-4" /> {s.demo ? 'Choose data folder' : 'Switch folder'}</button>
             {!s.demo && <button className="btn-ghost" onClick={() => { if (!s.dirty || confirm('Discard unsaved changes?')) s.closeFolder() }}>Close folder</button>}
           </div>
-          <p className="mt-4 text-xs text-zinc-400">App version {__APP_VERSION__}</p>
+          <p className="mt-4 text-xs text-ink-subtle">App version {__APP_VERSION__}</p>
         </Card>
       </div>
     </>
@@ -168,13 +168,13 @@ function InventorImport() {
 
   return (
     <Card className="p-5">
-      <h2 className="mb-1 font-medium">Import BOM from Inventor</h2>
-      <p className="mb-3 text-sm text-zinc-500">
+      <h2 className="mb-1 text-[15px] font-semibold leading-6">Import BOM from Inventor</h2>
+      <p className="mb-3 text-sm text-ink-subtle">
         In Inventor: <i>Assemble › Bill of Materials › Export</i>, choose the <b>Structured</b> view (all levels) and save as <b>.csv</b>. Parts are matched by <b>Part Number</b> (new ones take their category from the prefix, e.g. MEC-); an <i>Estimated Cost</i> column is read as ₪; you’ll see the changes before anything is applied. Lines you added by hand (glue, cables…) are kept.
       </p>
       <button className="btn" onClick={() => input.current?.click()}><FileUp className="h-4 w-4" /> Choose CSV file…</button>
       <input ref={input} type="file" accept=".csv,text/csv" hidden onChange={(e) => { onFile(e.target.files?.[0]); e.target.value = '' }} />
-      {err && <p className="mt-2 text-sm text-red-600">{err}</p>}
+      {err && <p className="mt-2 text-sm text-warning">{err}</p>}
 
       {rows && plan && (
         <Modal
@@ -185,7 +185,7 @@ function InventorImport() {
           <div className="space-y-3 text-sm">
             <Field label="This BOM belongs to assembly">
               <select className="input" value={target} onChange={(e) => setTarget(e.target.value)}>
-                <option value="__new">➕ Create a new assembly</option>
+                <option value="__new">Create a new assembly</option>
                 {assemblies.map((a) => <option key={a.id} value={a.id}>{a.pn} {a.name}</option>)}
               </select>
             </Field>
@@ -200,18 +200,18 @@ function InventorImport() {
                 {data.settings.categories.filter((c) => c.prefix !== 'ASM').map((c) => <option key={c.prefix} value={c.prefix}>{c.prefix} · {c.name}</option>)}
               </select>
             </Field>
-            <div className="rounded-lg bg-zinc-50 p-3">
+            <div className="rounded-lg bg-alt p-3">
               <div className="mb-1 font-medium">{rows.length} rows read · changes:</div>
-              <ul className="space-y-0.5 text-zinc-600">
-                <li><b className="text-emerald-700">{plan.newParts.length}</b> new parts</li>
+              <ul className="space-y-0.5 text-ink-muted">
+                <li><b className="text-tip">{plan.newParts.length}</b> new parts</li>
                 <li><b>{plan.updates.length}</b> name / revision updates</li>
-                <li><b className="text-emerald-700">{plan.added.length}</b> BOM lines added, <b>{plan.changed.length}</b> quantity changes, <b className="text-red-600">{plan.removed.length}</b> removed</li>
+                <li><b className="text-tip">{plan.added.length}</b> BOM lines added, <b>{plan.changed.length}</b> quantity changes, <b className="text-warning">{plan.removed.length}</b> removed</li>
               </ul>
-              <div className="mt-2 max-h-40 overflow-y-auto font-mono text-xs text-zinc-500">
+              <div className="mt-2 max-h-40 overflow-y-auto font-mono text-xs text-ink-subtle">
                 {plan.updates.map((u, i) => <div key={'u' + i}>~ {u.part.pn} {u.field}: “{u.from}” → “{u.to}”</div>)}
                 {plan.changed.map((c, i) => <div key={'c' + i}>~ {c.parent} › {c.child}: qty {c.from} → {c.to}</div>)}
-                {plan.removed.map((c, i) => <div key={'r' + i} className="text-red-600">− {c.parent} › {c.child}</div>)}
-                {plan.newParts.slice(0, 30).map((p) => <div key={p.id} className="text-emerald-700">+ {p.pn} {p.name}</div>)}
+                {plan.removed.map((c, i) => <div key={'r' + i} className="text-warning">− {c.parent} › {c.child}</div>)}
+                {plan.newParts.slice(0, 30).map((p) => <div key={p.id} className="text-tip">+ {p.pn} {p.name}</div>)}
               </div>
             </div>
           </div>

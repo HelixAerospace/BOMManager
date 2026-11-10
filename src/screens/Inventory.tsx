@@ -47,7 +47,7 @@ export default function InventoryScreen() {
         <SearchBox value={q} onChange={setQ} placeholder="Search PN, name, location…" />
       </div>
       <div className="grid gap-5 p-6 pt-3 xl:grid-cols-4">
-        <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white xl:col-span-3">
+        <div className="overflow-hidden rounded-lg border border-hairline bg-surface xl:col-span-3">
           {list.length === 0 ? (
             <Empty icon={<Warehouse className="h-5 w-5" />} title="Nothing here" text="Stock appears when you receive orders, or type counts straight into the On hand column." />
           ) : (
@@ -58,12 +58,12 @@ export default function InventoryScreen() {
               <tbody>
                 {list.map((p) => (
                   <tr key={p.id}>
-                    <td><button className="text-left hover:underline" onClick={() => nav.openPart(p.id)}><span className="font-mono text-xs text-zinc-500">{p.pn}</span> {p.name}</button></td>
-                    <td className="text-zinc-500">{p.location}</td>
+                    <td><button className="text-left hover:underline" onClick={() => nav.openPart(p.id)}><span className="font-mono text-xs text-ink-subtle">{p.pn}</span> {p.name}</button></td>
+                    <td className="text-ink-subtle">{p.location}</td>
                     <td className="num w-24"><NumInput className="cell-input num font-medium" value={p.onHand} onChange={(v) => adjust(p.id, v)} /></td>
-                    <td className="num w-20"><NumInput className="cell-input num text-zinc-500" value={p.minStock} min={0} onChange={(v) => update((d) => void (d.parts.find((x) => x.id === p.id)!.minStock = v))} /></td>
-                    <td className="num w-20"><NumInput className="cell-input num text-zinc-500" value={p.sparesTarget} min={0} onChange={(v) => update((d) => void (d.parts.find((x) => x.id === p.id)!.sparesTarget = v))} /></td>
-                    <td className="num text-zinc-500">{onOrder.get(p.id) ? fmtNum(onOrder.get(p.id)!) : ''}</td>
+                    <td className="num w-20"><NumInput className="cell-input num text-ink-subtle" value={p.minStock} min={0} onChange={(v) => update((d) => void (d.parts.find((x) => x.id === p.id)!.minStock = v))} /></td>
+                    <td className="num w-20"><NumInput className="cell-input num text-ink-subtle" value={p.sparesTarget} min={0} onChange={(v) => update((d) => void (d.parts.find((x) => x.id === p.id)!.sparesTarget = v))} /></td>
+                    <td className="num text-ink-subtle">{onOrder.get(p.id) ? fmtNum(onOrder.get(p.id)!) : ''}</td>
                     <td><StockChip s={stockState(p)} /></td>
                   </tr>
                 ))}
@@ -72,18 +72,18 @@ export default function InventoryScreen() {
           )}
         </div>
         <Card className="h-fit">
-          <div className="border-b border-zinc-100 px-4 py-3 text-sm font-medium">Recent stock movements</div>
-          <ul className="divide-y divide-zinc-100 text-sm">
-            {moves.length === 0 && <li className="px-4 py-6 text-center text-zinc-400">None yet</li>}
+          <div className="border-b border-hairline px-4 py-3 text-[15px] font-semibold leading-6">Recent stock movements</div>
+          <ul className="divide-y divide-hairline text-sm">
+            {moves.length === 0 && <li className="px-4 py-6 text-center text-ink-subtle">None yet</li>}
             {moves.map((m) => {
               const p = idx.partById.get(m.partId)
               return (
                 <li key={m.id} className="flex items-center justify-between gap-2 px-4 py-2">
                   <div className="min-w-0">
-                    <div className="truncate"><span className="font-mono text-xs text-zinc-500">{p?.pn}</span> {p?.name}</div>
-                    <div className="text-xs text-zinc-400">{new Date(m.date).toLocaleDateString()} · {m.ref}</div>
+                    <div className="truncate"><span className="font-mono text-xs text-ink-subtle">{p?.pn}</span> {p?.name}</div>
+                    <div className="text-xs text-ink-subtle">{new Date(m.date).toLocaleDateString()} · {m.ref}</div>
                   </div>
-                  <span className={`num font-medium ${m.delta > 0 ? 'text-emerald-600' : 'text-red-600'}`}>{m.delta > 0 ? '+' : ''}{fmtNum(m.delta)}</span>
+                  <span className={`num font-medium ${m.delta > 0 ? 'text-tip' : 'text-warning'}`}>{m.delta > 0 ? '+' : ''}{fmtNum(m.delta)}</span>
                 </li>
               )
             })}

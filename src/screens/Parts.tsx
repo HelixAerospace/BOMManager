@@ -59,11 +59,11 @@ export default function PartsScreen() {
       </div>
       <div className="p-6 pt-3">
         {data.parts.length === 0 ? (
-          <div className="rounded-xl border border-zinc-200 bg-white">
+          <div className="rounded-lg border border-hairline bg-surface">
             <Empty icon={<Boxes className="h-5 w-5" />} title="No parts yet" text="Add parts one by one, or import a BOM exported from Inventor in Settings." action={<button className="btn-primary" onClick={add}><Plus className="h-4 w-4" /> New part</button>} />
           </div>
         ) : (
-          <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
+          <div className="overflow-hidden rounded-lg border border-hairline bg-surface">
             <table className="grid-table">
               <thead>
                 <tr>
@@ -79,23 +79,23 @@ export default function PartsScreen() {
                   return (
                     <tr key={p.id} className="clickable" onClick={() => nav.openPart(p.id)}>
                       <td className="font-mono text-xs">{p.pn}</td>
-                      <td className="max-w-xs truncate">{p.name || <span className="text-zinc-400">Unnamed</span>}</td>
-                      <td className="text-zinc-500">{p.rev}</td>
-                      <td>{isAsm ? <span className="text-xs text-zinc-500">Assembly</span> : <MakeBuyChip v={p.makeBuy} />}</td>
-                      <td className="whitespace-nowrap text-zinc-500">{idx.supplierById.get(p.supplierId ?? '')?.name ?? ''}</td>
-                      <td className="num text-zinc-500">{p.plannedCost ? fmtMoney(p.plannedCost, p.currency) : ''}</td>
+                      <td className="max-w-xs truncate">{p.name || <span className="text-ink-subtle">Unnamed</span>}</td>
+                      <td className="text-ink-subtle">{p.rev}</td>
+                      <td>{isAsm ? <span className="text-xs text-ink-subtle">Assembly</span> : <MakeBuyChip v={p.makeBuy} />}</td>
+                      <td className="whitespace-nowrap text-ink-subtle">{idx.supplierById.get(p.supplierId ?? '')?.name ?? ''}</td>
+                      <td className="num text-ink-subtle">{p.plannedCost ? fmtMoney(p.plannedCost, p.currency) : ''}</td>
                       <td className="num">{planned ? fmtMoney(planned) : ''}</td>
                       <td className="num">
                         {a ? (
                           <span title={`from ${a.orderNumber}`}>
                             {fmtMoney(a.unitIls)}
-                            {Math.abs(diff) >= 0.05 && <span className={`ml-1 text-xs ${diff > 0 ? 'text-red-600' : 'text-emerald-600'}`}>{diff > 0 ? '+' : ''}{Math.round(diff * 100)}%</span>}
+                            {Math.abs(diff) >= 0.05 && <span className={`ml-1 text-xs ${diff > 0 ? 'text-warning' : 'text-tip'}`}>{diff > 0 ? '+' : ''}{Math.round(diff * 100)}%</span>}
                           </span>
                         ) : ''}
                       </td>
                       <td className="num">{isAsm ? '' : fmtNum(p.onHand)}</td>
                       <td>{!isAsm && <StockChip s={stockState(p)} />}</td>
-                      <td className="num text-zinc-500">{idx.parents.get(p.id)?.length || ''}</td>
+                      <td className="num text-ink-subtle">{idx.parents.get(p.id)?.length || ''}</td>
                     </tr>
                   )
                 })}

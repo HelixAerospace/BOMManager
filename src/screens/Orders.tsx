@@ -60,7 +60,7 @@ export default function OrdersScreen() {
         <SearchBox value={q} onChange={setQ} placeholder="Search PO, supplier, part, invoice…" />
       </div>
       <div className="p-6 pt-3">
-        <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
+        <div className="overflow-hidden rounded-lg border border-hairline bg-surface">
           {list.length === 0 ? (
             <Empty icon={<ShoppingCart className="h-5 w-5" />} title="No orders here" text="Create an order, or use BOM › Build check to create draft orders for everything you’re short of." action={<button className="btn-primary" onClick={add}><Plus className="h-4 w-4" /> New order</button>} />
           ) : (
@@ -74,15 +74,15 @@ export default function OrdersScreen() {
                   return (
                     <tr key={o.id} className="clickable" onClick={() => nav.openOrder(o.id)}>
                       <td className="font-mono text-xs">{o.number}</td>
-                      <td>{idx.supplierById.get(o.supplierId ?? '')?.name ?? <span className="text-zinc-400">No supplier</span>}</td>
+                      <td>{idx.supplierById.get(o.supplierId ?? '')?.name ?? <span className="text-ink-subtle">No supplier</span>}</td>
                       <td><StepBar status={o.status} /></td>
                       <td><OrderStatusChip status={o.status} late={isLate(o)} /></td>
-                      <td className="text-zinc-500">{o.orderDate}</td>
-                      <td className={isLate(o) ? 'font-medium text-red-600' : 'text-zinc-500'}>{o.expectedDate}</td>
+                      <td className="text-ink-subtle">{o.orderDate}</td>
+                      <td className={isLate(o) ? 'font-medium text-warning' : 'text-ink-subtle'}>{o.expectedDate}</td>
                       <td className="num">{o.lines.length}</td>
-                      <td className="num text-zinc-500">{fmtMoney(goods, o.currency)}</td>
+                      <td className="num text-ink-subtle">{fmtMoney(goods, o.currency)}</td>
                       <td className="num">{fmtMoney(orderValueIls(data, o))}</td>
-                      <td>{o.files.length > 0 && <Paperclip className="h-3.5 w-3.5 text-zinc-400" />}</td>
+                      <td>{o.files.length > 0 && <Paperclip className="h-3.5 w-3.5 text-ink-subtle" />}</td>
                     </tr>
                   )
                 })}

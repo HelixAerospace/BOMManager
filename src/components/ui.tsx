@@ -4,74 +4,73 @@ import type { OrderStatus, Part } from '../lib/types'
 import type { Availability, StockState } from '../lib/calc'
 import { useStore } from '../lib/store'
 
-// ---------- status chips: colour + icon + label, never colour alone ----------
+// ---------- badges: hx-badge. Safety colours only when they mean something, always with icon + label ----------
 const tone = {
-  gray: 'bg-zinc-100 text-zinc-600 ring-zinc-200',
-  blue: 'bg-blue-50 text-blue-700 ring-blue-200',
-  violet: 'bg-violet-50 text-violet-700 ring-violet-200',
-  green: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-  amber: 'bg-amber-50 text-amber-700 ring-amber-200',
-  red: 'bg-red-50 text-red-700 ring-red-200',
+  neutral: 'bg-alt text-ink-muted border-hairline', // hx-badge
+  note: 'bg-accent-tint text-accent border-note-line', // Note: information
+  tip: 'bg-tip-bg text-tip border-tip-line', // Tip: good / done
+  caution: 'bg-caution-bg text-caution border-caution-line', // Caution: needs attention soon
+  warning: 'bg-warning-bg text-warning border-warning-line', // Warning: problem now
 }
-export function Chip({ color = 'gray', icon, children }: { color?: keyof typeof tone; icon?: ReactNode; children: ReactNode }) {
+export function Chip({ color = 'neutral', icon, children }: { color?: keyof typeof tone; icon?: ReactNode; children: ReactNode }) {
   return (
-    <span className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${tone[color]}`}>
+    <span className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 text-xs font-medium leading-5 ${tone[color]}`}>
       {icon}
       {children}
     </span>
   )
 }
-const ic = 'h-3 w-3'
+const ic = 'h-3.5 w-3.5'
 
 export const ORDER_STATUS: Record<OrderStatus, { label: string; color: keyof typeof tone; icon: ReactNode; step: number }> = {
-  draft: { label: 'Draft', color: 'gray', icon: <Circle className={ic} />, step: 0 },
-  ordered: { label: 'Ordered', color: 'blue', icon: <Clock className={ic} />, step: 1 },
-  shipped: { label: 'Shipped', color: 'violet', icon: <Truck className={ic} />, step: 2 },
-  partial: { label: 'Part received', color: 'amber', icon: <PackageMinus className={ic} />, step: 3 },
-  received: { label: 'Received', color: 'green', icon: <PackageCheck className={ic} />, step: 4 },
-  cancelled: { label: 'Cancelled', color: 'gray', icon: <XCircle className={ic} />, step: -1 },
+  draft: { label: 'Draft', color: 'neutral', icon: <Circle className={ic} />, step: 0 },
+  ordered: { label: 'Ordered', color: 'neutral', icon: <Clock className={ic} />, step: 1 },
+  shipped: { label: 'Shipped', color: 'neutral', icon: <Truck className={ic} />, step: 2 },
+  partial: { label: 'Part received', color: 'note', icon: <PackageMinus className={ic} />, step: 3 },
+  received: { label: 'Received', color: 'tip', icon: <PackageCheck className={ic} />, step: 4 },
+  cancelled: { label: 'Cancelled', color: 'neutral', icon: <XCircle className={ic} />, step: -1 },
 }
 export function OrderStatusChip({ status, late }: { status: OrderStatus; late?: boolean }) {
   const s = ORDER_STATUS[status]
   return (
     <span className="inline-flex items-center gap-1">
       <Chip color={s.color} icon={s.icon}>{s.label}</Chip>
-      {late && <Chip color="red" icon={<AlertTriangle className={ic} />}>Late</Chip>}
+      {late && <Chip color="warning" icon={<AlertTriangle className={ic} />}>Late</Chip>}
     </span>
   )
 }
 export function StepBar({ status }: { status: OrderStatus }) {
   const step = ORDER_STATUS[status].step
-  if (step < 0) return <div className="h-1.5 w-24 rounded-full bg-zinc-100" />
+  if (step < 0) return <div className="h-1.5 w-24 rounded-full bg-hairline" />
   return (
-    <div className="flex w-24 gap-0.5" title={ORDER_STATUS[status].label}>
+    <div className="flex w-24 gap-0.5" title={ORDER_STATUS[status].label} aria-label={`Progress: ${ORDER_STATUS[status].label}`}>
       {[0, 1, 2, 3, 4].map((i) => (
-        <div key={i} className={`h-1.5 flex-1 rounded-full ${i <= step ? (step === 4 ? 'bg-emerald-500' : 'bg-zinc-800') : 'bg-zinc-200'}`} />
+        <div key={i} className={`h-1.5 flex-1 rounded-full ${i <= step ? (step === 4 ? 'bg-tip' : 'bg-ink') : 'bg-hairline'}`} />
       ))}
     </div>
   )
 }
 export function AvailabilityChip({ a }: { a: Availability }) {
-  if (a === 'in-stock') return <Chip color="green" icon={<CheckCircle2 className={ic} />}>In stock</Chip>
-  if (a === 'expected') return <Chip color="blue" icon={<Truck className={ic} />}>Expected</Chip>
-  return <Chip color="red" icon={<AlertTriangle className={ic} />}>Short</Chip>
+  if (a === 'in-stock') return <Chip color="tip" icon={<CheckCircle2 className={ic} />}>In stock</Chip>
+  if (a === 'expected') return <Chip color="note" icon={<Truck className={ic} />}>Expected</Chip>
+  return <Chip color="warning" icon={<AlertTriangle className={ic} />}>Short</Chip>
 }
 export function StockChip({ s }: { s: StockState }) {
-  if (s === 'ok') return <Chip color="green" icon={<CheckCircle2 className={ic} />}>OK</Chip>
-  if (s === 'low') return <Chip color="amber" icon={<AlertTriangle className={ic} />}>Low</Chip>
-  return <Chip color="red" icon={<XCircle className={ic} />}>Out</Chip>
+  if (s === 'ok') return <Chip icon={<CheckCircle2 className={ic} />}>OK</Chip>
+  if (s === 'low') return <Chip color="caution" icon={<AlertTriangle className={ic} />}>Low</Chip>
+  return <Chip color="warning" icon={<XCircle className={ic} />}>Out</Chip>
 }
 export function MakeBuyChip({ v }: { v: 'make' | 'buy' }) {
-  return v === 'make' ? <Chip color="violet">Custom</Chip> : <Chip>Off-the-shelf</Chip>
+  return <Chip>{v === 'make' ? 'Custom' : 'Off-the-shelf'}</Chip>
 }
 
 // ---------- layout ----------
 export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: ReactNode; actions?: ReactNode }) {
   return (
-    <div className="flex items-end justify-between gap-4 border-b border-zinc-200 bg-white px-6 py-4">
+    <div className="flex items-end justify-between gap-4 border-b border-hairline bg-surface px-6 py-4">
       <div>
-        <h1 className="text-lg font-semibold tracking-tight">{title}</h1>
-        {subtitle && <div className="mt-0.5 text-sm text-zinc-500">{subtitle}</div>}
+        <h1 className="text-xl font-semibold leading-7">{title}</h1>
+        {subtitle && <div className="mt-0.5 text-sm text-ink-subtle">{subtitle}</div>}
       </div>
       <div className="flex items-center gap-2">{actions}</div>
     </div>
@@ -79,16 +78,20 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
 }
 
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <div className={`rounded-xl border border-zinc-200 bg-white ${className}`}>{children}</div>
+  return <div className={`rounded-lg border border-hairline bg-surface ${className}`}>{children}</div>
 }
 
 export function Kpi({ label, value, sub, tone: t, onClick }: { label: string; value: ReactNode; sub?: ReactNode; tone?: 'red' | 'amber' | 'green'; onClick?: () => void }) {
-  const accent = t === 'red' ? 'text-red-600' : t === 'amber' ? 'text-amber-600' : t === 'green' ? 'text-emerald-600' : 'text-zinc-900'
+  // Safety colours only when something needs action; "fine" stays ink.
+  const accent = t === 'red' ? 'text-warning' : t === 'amber' ? 'text-caution' : 'text-ink'
   return (
-    <button onClick={onClick} className="rounded-xl border border-zinc-200 bg-white p-4 text-left transition hover:border-zinc-300 hover:shadow-sm">
-      <div className="text-xs font-medium text-zinc-500">{label}</div>
-      <div className={`num mt-1 text-left text-2xl font-semibold tracking-tight ${accent}`}>{value}</div>
-      {sub && <div className="mt-1 text-xs text-zinc-500">{sub}</div>}
+    <button onClick={onClick} className="rounded-lg border border-hairline bg-surface p-4 text-left hover:border-control">
+      <div className="text-sm text-ink-muted">{label}</div>
+      <div className={`num mt-1 flex items-center gap-2 text-left text-[28px] font-semibold leading-9 ${accent}`}>
+        {(t === 'red' || t === 'amber') && <AlertTriangle className="h-5 w-5" aria-hidden />}
+        {value}
+      </div>
+      {sub && <div className="mt-1 text-xs text-ink-subtle">{sub}</div>}
     </button>
   )
 }
@@ -96,9 +99,9 @@ export function Kpi({ label, value, sub, tone: t, onClick }: { label: string; va
 export function Empty({ icon, title, text, action }: { icon: ReactNode; title: string; text: string; action?: ReactNode }) {
   return (
     <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
-      <div className="mb-3 rounded-full bg-zinc-100 p-3 text-zinc-500">{icon}</div>
-      <div className="font-medium">{title}</div>
-      <div className="mt-1 max-w-sm text-sm text-zinc-500">{text}</div>
+      <div className="mb-3 rounded-full border border-hairline bg-alt p-3 text-ink-muted">{icon}</div>
+      <div className="text-[19px] font-semibold leading-[26px]">{title}</div>
+      <div className="mt-1 max-w-sm text-sm text-ink-subtle">{text}</div>
       {action && <div className="mt-4">{action}</div>}
     </div>
   )
@@ -112,17 +115,17 @@ export function SidePanel({ title, subtitle, onClose, children, footer, wide }: 
     return () => window.removeEventListener('keydown', k)
   }, [onClose])
   return (
-    <div className="fixed inset-0 z-30 flex justify-end bg-zinc-900/20" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className={`flex h-full w-full ${wide ? 'max-w-3xl' : 'max-w-xl'} flex-col bg-white shadow-2xl`}>
-        <div className="flex items-start justify-between border-b border-zinc-200 px-5 py-4">
+    <div className="fixed inset-0 z-30 flex justify-end bg-black/40" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className={`flex h-full w-full ${wide ? 'max-w-3xl' : 'max-w-xl'} flex-col border-l border-hairline bg-surface`}>
+        <div className="flex items-start justify-between border-b border-hairline px-5 py-4">
           <div>
-            <div className="text-base font-semibold">{title}</div>
-            {subtitle && <div className="mt-0.5 text-sm text-zinc-500">{subtitle}</div>}
+            <div className="text-[19px] font-semibold leading-[26px]">{title}</div>
+            {subtitle && <div className="mt-0.5 text-sm text-ink-subtle">{subtitle}</div>}
           </div>
-          <button className="btn-ghost" onClick={onClose} aria-label="Close"><X className="h-4 w-4" /></button>
+          <button className="btn-icon" onClick={onClose} aria-label="Close"><X className="h-4 w-4" /></button>
         </div>
         <div className="flex-1 overflow-y-auto px-5 py-4">{children}</div>
-        {footer && <div className="flex items-center justify-between gap-2 border-t border-zinc-200 px-5 py-3">{footer}</div>}
+        {footer && <div className="flex items-center justify-between gap-2 border-t border-hairline px-5 py-3">{footer}</div>}
       </div>
     </div>
   )
@@ -130,14 +133,14 @@ export function SidePanel({ title, subtitle, onClose, children, footer, wide }: 
 
 export function Modal({ title, onClose, children, footer }: { title: string; onClose: () => void; children: ReactNode; footer?: ReactNode }) {
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-zinc-900/30 p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="w-full max-w-lg rounded-xl bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b border-zinc-200 px-5 py-3">
-          <div className="font-semibold">{title}</div>
-          <button className="btn-ghost" onClick={onClose}><X className="h-4 w-4" /></button>
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="w-full max-w-lg rounded-lg border border-hairline bg-surface">
+        <div className="flex items-center justify-between border-b border-hairline px-5 py-3">
+          <div className="text-[19px] font-semibold leading-[26px]">{title}</div>
+          <button className="btn-icon" onClick={onClose} aria-label="Close"><X className="h-4 w-4" /></button>
         </div>
         <div className="px-5 py-4">{children}</div>
-        {footer && <div className="flex justify-end gap-2 border-t border-zinc-200 px-5 py-3">{footer}</div>}
+        {footer && <div className="flex justify-end gap-2 border-t border-hairline px-5 py-3">{footer}</div>}
       </div>
     </div>
   )
@@ -178,7 +181,7 @@ export function NumInput({ value, onChange, className = 'input num', min, step, 
 export function SearchBox({ value, onChange, placeholder = 'Search…' }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
   return (
     <div className="relative">
-      <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+      <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-subtle" />
       <input className="input w-64 pl-8" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />
     </div>
   )
@@ -186,15 +189,15 @@ export function SearchBox({ value, onChange, placeholder = 'Search…' }: { valu
 
 export function FilterTabs<T extends string>({ value, onChange, options }: { value: T; onChange: (v: T) => void; options: { value: T; label: string; count?: number }[] }) {
   return (
-    <div className="flex gap-1 rounded-lg bg-zinc-100 p-0.5">
+    <div className="flex gap-1 rounded-lg border border-hairline bg-alt p-0.5" role="tablist">
       {options.map((o) => (
         <button
           key={o.value}
           onClick={() => onChange(o.value)}
-          className={`rounded-md px-2.5 py-1 text-xs font-medium ${value === o.value ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-800'}`}
+          className={`rounded-md border px-2.5 py-1 text-sm font-medium ${value === o.value ? 'border-hairline bg-surface text-ink' : 'border-transparent text-ink-muted hover:text-ink'}`}
         >
           {o.label}
-          {o.count != null && <span className="ml-1 text-zinc-400">{o.count}</span>}
+          {o.count != null && <span className="ml-1 text-ink-subtle">{o.count}</span>}
         </button>
       ))}
     </div>
@@ -238,15 +241,15 @@ export function PartPicker({ parts, onPick, placeholder = 'Add part… (type PN 
         }}
       />
       {open && list.length > 0 && (
-        <div className="absolute z-20 mt-1 max-h-72 w-full overflow-y-auto rounded-md border border-zinc-200 bg-white py-1 shadow-lg">
+        <div className="absolute z-20 mt-1 max-h-72 w-full overflow-y-auto rounded-lg border border-hairline bg-surface py-1">
           {list.map((p, i) => (
             <button
               key={p.id}
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => pick(p)}
-              className={`flex w-full items-center gap-3 px-3 py-1.5 text-left text-sm ${i === hi ? 'bg-zinc-100' : ''}`}
+              className={`flex w-full items-center gap-3 px-3 py-1.5 text-left text-sm ${i === hi ? 'bg-alt' : ''}`}
             >
-              <span className="w-24 font-mono text-xs text-zinc-500">{p.pn}</span>
+              <span className="w-24 font-mono text-xs text-ink-subtle">{p.pn}</span>
               <span className="truncate">{p.name}</span>
             </button>
           ))}
@@ -273,14 +276,14 @@ export function Attachments({ files, group, onChange }: { files: string[]; group
   return (
     <div>
       {files.length > 0 && (
-        <ul className="mb-2 divide-y divide-zinc-100 rounded-md border border-zinc-200">
+        <ul className="mb-2 divide-y divide-hairline rounded-lg border border-hairline">
           {files.map((f) => (
             <li key={f} className="flex items-center justify-between gap-2 px-3 py-1.5 text-sm">
               <button className="flex min-w-0 items-center gap-2 text-left hover:underline" onClick={() => openFile(f)}>
-                <FileText className="h-4 w-4 shrink-0 text-zinc-400" />
+                <FileText className="h-4 w-4 shrink-0 text-ink-subtle" />
                 <span className="truncate">{f.split('/').pop()}</span>
               </button>
-              <button className="text-xs text-zinc-400 hover:text-red-600" onClick={() => onChange(files.filter((x) => x !== f))} title="Remove link (file stays in the folder)">
+              <button className="text-xs text-ink-subtle hover:text-warning" onClick={() => onChange(files.filter((x) => x !== f))} title="Remove link (file stays in the folder)">
                 Remove
               </button>
             </li>
@@ -299,7 +302,7 @@ export function Attachments({ files, group, onChange }: { files: string[]; group
           add(e.dataTransfer.files)
         }}
         onClick={() => input.current?.click()}
-        className={`flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed px-3 py-3 text-sm ${over ? 'border-zinc-500 bg-zinc-50' : 'border-zinc-300 text-zinc-500 hover:bg-zinc-50'}`}
+        className={`flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed px-3 py-3 text-sm ${over ? 'border-control bg-alt' : 'border-control text-ink-subtle hover:bg-alt'}`}
       >
         {files.length ? <Paperclip className="h-4 w-4" /> : <Upload className="h-4 w-4" />}
         {demo ? 'Attachments are disabled in demo mode' : 'Drop files here or click to attach (PDF, images, STEP…)'}

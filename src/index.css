@@ -1,24 +1,151 @@
 @import "tailwindcss";
+@import "@fontsource/ibm-plex-sans/400.css";
+@import "@fontsource/ibm-plex-sans/500.css";
+@import "@fontsource/ibm-plex-sans/600.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
 
-@theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+/* Helix Aerospace design system — screen register (ui-* tokens, tokens.json v2). */
+:root {
+  color-scheme: light;
+  --ui-surface: #ffffff;
+  --ui-surface-side: #fafbfc;
+  --ui-surface-alt: #f4f6f9;
+  --ui-code: #f1f3f6;
+  --ui-ink: #0e1217;
+  --ui-ink-muted: #4a5361;
+  --ui-ink-subtle: #5f6875;
+  --ui-on-ink: #ffffff;
+  --ui-hairline: #e3e7ed;
+  --ui-control-border: #8a93a0;
+  --ui-accent: #1f5eff;
+  --ui-accent-tint: #eef3ff;
+  --ui-note-line: #c9d7ff;
+  --ui-tip: #11764f;
+  --ui-tip-bg: #eef8f3;
+  --ui-tip-line: #bfe3d2;
+  --ui-caution: #b25e00;
+  --ui-caution-bg: #fdf5ec;
+  --ui-caution-line: #f0d2ae;
+  --ui-warning: #b42a25;
+  --ui-warning-bg: #fdf2f1;
+  --ui-warning-line: #f1c4bf;
+  --helix-logo: #0e0607; /* logo is black on light grounds */
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --ui-surface: #0d1117;
+    --ui-surface-side: #0f141b;
+    --ui-surface-alt: #151b23;
+    --ui-code: #1a212b;
+    --ui-ink: #e8ecf1;
+    --ui-ink-muted: #a9b3c0;
+    --ui-ink-subtle: #8b97a6;
+    --ui-on-ink: #0d1117;
+    --ui-hairline: #262e39;
+    --ui-control-border: #5f6b7a;
+    --ui-accent: #86a6ff;
+    --ui-accent-tint: #18233b;
+    --ui-note-line: #2a3a63;
+    --ui-tip: #56cc93;
+    --ui-tip-bg: #0f231a;
+    --ui-tip-line: #1f4a35;
+    --ui-caution: #f2a65a;
+    --ui-caution-bg: #2a1e0f;
+    --ui-caution-line: #5a3d1a;
+    --ui-warning: #ff8f85;
+    --ui-warning-bg: #2a1615;
+    --ui-warning-line: #5a2622;
+    --helix-logo: #ffffff;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ui-surface: #0d1117;
+  --ui-surface-side: #0f141b;
+  --ui-surface-alt: #151b23;
+  --ui-code: #1a212b;
+  --ui-ink: #e8ecf1;
+  --ui-ink-muted: #a9b3c0;
+  --ui-ink-subtle: #8b97a6;
+  --ui-on-ink: #0d1117;
+  --ui-hairline: #262e39;
+  --ui-control-border: #5f6b7a;
+  --ui-accent: #86a6ff;
+  --ui-accent-tint: #18233b;
+  --ui-note-line: #2a3a63;
+  --ui-tip: #56cc93;
+  --ui-tip-bg: #0f231a;
+  --ui-tip-line: #1f4a35;
+  --ui-caution: #f2a65a;
+  --ui-caution-bg: #2a1e0f;
+  --ui-caution-line: #5a3d1a;
+  --ui-warning: #ff8f85;
+  --ui-warning-bg: #2a1615;
+  --ui-warning-line: #5a2622;
+  --helix-logo: #ffffff;
+}
+
+@theme inline {
+  --font-sans: "IBM Plex Sans", "IBM Plex Sans Hebrew", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --color-surface: var(--ui-surface);
+  --color-side: var(--ui-surface-side);
+  --color-alt: var(--ui-surface-alt);
+  --color-code: var(--ui-code);
+  --color-ink: var(--ui-ink);
+  --color-ink-muted: var(--ui-ink-muted);
+  --color-ink-subtle: var(--ui-ink-subtle);
+  --color-on-ink: var(--ui-on-ink);
+  --color-hairline: var(--ui-hairline);
+  --color-control: var(--ui-control-border);
+  --color-accent: var(--ui-accent);
+  --color-accent-tint: var(--ui-accent-tint);
+  --color-note-line: var(--ui-note-line);
+  --color-tip: var(--ui-tip);
+  --color-tip-bg: var(--ui-tip-bg);
+  --color-tip-line: var(--ui-tip-line);
+  --color-caution: var(--ui-caution);
+  --color-caution-bg: var(--ui-caution-bg);
+  --color-caution-line: var(--ui-caution-line);
+  --color-warning: var(--ui-warning);
+  --color-warning-bg: var(--ui-warning-bg);
+  --color-warning-line: var(--ui-warning-line);
+  /* Nothing smaller than 13px (ui-caption). */
+  --text-xs: 13px;
+  --text-xs--line-height: 18px;
+  --text-sm: 14px;
+  --text-sm--line-height: 20px;
 }
 
 html, body, #root { height: 100%; }
-body { @apply bg-zinc-50 text-zinc-900 antialiased; font-size: 14px; }
+body { @apply bg-surface text-ink antialiased; font-family: var(--font-sans); font-size: 14px; line-height: 20px; }
+b, strong { font-weight: 600; } /* Plex weights: 400, 500, 600 — no Bold */
 .num { font-variant-numeric: tabular-nums; text-align: right; }
-input, select, textarea { @apply outline-none; }
-@layer components {
-.input { @apply w-full rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-sm focus:border-zinc-400 focus:ring-2 focus:ring-zinc-200; }
-.cell-input { @apply w-full rounded border border-transparent bg-transparent px-1.5 py-0.5 hover:border-zinc-200 focus:border-zinc-400 focus:bg-white; }
-.btn { @apply whitespace-nowrap; } .btn { @apply inline-flex items-center gap-1.5 rounded-md border border-zinc-200 bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50; }
-.btn-primary { @apply whitespace-nowrap; } .btn-primary { @apply inline-flex items-center gap-1.5 rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50; }
-.btn-ghost { @apply inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-zinc-600 hover:bg-zinc-100; }
-.label { @apply mb-1 block text-xs font-medium text-zinc-500; }
-}
-table.grid-table { @apply w-full border-collapse text-sm; }
-table.grid-table th { @apply sticky top-0 z-10 border-b border-zinc-200 bg-zinc-50 px-3 py-2 text-left text-xs font-medium text-zinc-500 whitespace-nowrap; }
-table.grid-table td { @apply border-b border-zinc-100 px-3 py-1.5 align-middle; }
-table.grid-table tr.clickable:hover td { @apply bg-zinc-50 cursor-pointer; }
-
 .font-mono { white-space: nowrap; }
+.logo { color: var(--helix-logo); display: block; }
+.logo svg { height: 100%; width: auto; display: block; }
+
+/* 2px ui-focus ring with 2px offset on every interactive element. */
+:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 2px; }
+input:focus-visible, select:focus-visible, textarea:focus-visible { outline-offset: 0; }
+
+@layer components {
+  /* Fields: control-height-sm (36px), ui-control-border, 8px corners. */
+  .input { @apply h-9 w-full rounded-lg border border-control bg-surface px-3 text-sm text-ink placeholder:text-ink-subtle; }
+  textarea.input { @apply h-auto py-2; }
+  .cell-input { @apply w-full rounded border border-transparent bg-transparent px-1.5 py-0.5 hover:border-control focus:border-control focus:bg-surface; }
+  /* Buttons: Medium 14px labels, 36px compact desktop height, flat. */
+  .btn { @apply inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-lg border border-hairline bg-surface px-3 text-sm font-medium text-ink hover:bg-alt disabled:cursor-not-allowed disabled:bg-alt disabled:text-ink-subtle; }
+  .btn-primary { @apply inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-lg border border-ink bg-ink px-3 text-sm font-medium text-on-ink hover:opacity-90 disabled:cursor-not-allowed disabled:border-hairline disabled:bg-alt disabled:text-ink-subtle disabled:opacity-100; }
+  .btn-ghost { @apply inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-lg px-2 text-sm font-medium text-accent hover:underline hover:underline-offset-4; }
+  .btn-icon { @apply inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink-muted hover:bg-alt hover:text-ink; }
+  .label { @apply mb-2 block text-sm font-medium text-ink; }
+}
+
+table.grid-table { @apply w-full border-collapse text-sm; }
+table.grid-table th { @apply sticky top-0 z-10 whitespace-nowrap border-b border-hairline bg-alt px-3 py-2 text-left text-xs font-medium text-ink-muted; }
+table.grid-table td { @apply border-b border-hairline px-3 py-2 align-middle; }
+table.grid-table tr:last-child td { @apply border-b-0; }
+table.grid-table tr.clickable:hover td { @apply cursor-pointer bg-alt; }

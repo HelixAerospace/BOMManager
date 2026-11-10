@@ -48,16 +48,16 @@ export default function PartPanel({ id }: { id: string }) {
     <SidePanel
       wide
       onClose={() => nav.openPart(null)}
-      title={<span className="flex items-center gap-2"><span className="font-mono text-sm text-zinc-500">{p.pn}</span> {p.name || 'Unnamed part'}</span>}
+      title={<span className="flex items-center gap-2"><span className="font-mono text-sm text-ink-subtle">{p.pn}</span> {p.name || 'Unnamed part'}</span>}
       subtitle={<span className="flex items-center gap-2">{isAsm ? 'Assembly' : <MakeBuyChip v={p.makeBuy} />}{!isAsm && <StockChip s={stockState(p)} />} rev {p.rev}</span>}
       footer={
         <>
-          <button className="btn-ghost text-red-600" onClick={remove}><Trash2 className="h-4 w-4" /> Delete part</button>
+          <button className="btn-ghost text-warning" onClick={remove}><Trash2 className="h-4 w-4" /> Delete part</button>
           <button className="btn" onClick={() => nav.openPart(null)}>Close</button>
         </>
       }
     >
-      <div className="grid grid-cols-4 gap-3 rounded-lg bg-zinc-50 p-3 text-sm">
+      <div className="grid grid-cols-4 gap-3 rounded-lg bg-alt p-3 text-sm">
         <Stat label="Planned unit cost" value={fmtMoney(cost?.planned)} />
         <Stat label="Actual unit cost" value={isAsm ? (cost && cost.actualCoverage > 0 ? fmtMoney(cost.actual) : '—') : a ? fmtMoney(a.unitIls) : '—'} sub={a ? `last: ${a.orderNumber}` : isAsm && cost ? `${Math.round(cost.actualCoverage * 100)}% known` : undefined} />
         <Stat label="On hand" value={isAsm ? '—' : fmtNum(p.onHand)} sub={p.location || undefined} />
@@ -92,7 +92,7 @@ export default function PartPanel({ id }: { id: string }) {
               {[...new Set([...CURRENCIES, ...Object.keys(data.settings.fx)])].map((c) => <option key={c}>{c}</option>)}
             </select>
           </Field>
-          <div className="col-span-3 self-end pb-2 text-xs text-zinc-500">{p.currency !== 'ILS' && p.plannedCost ? `≈ ${fmtMoney(toIls(data, p.plannedCost, p.currency))}` : ''}</div>
+          <div className="col-span-3 self-end pb-2 text-xs text-ink-subtle">{p.currency !== 'ILS' && p.plannedCost ? `≈ ${fmtMoney(toIls(data, p.plannedCost, p.currency))}` : ''}</div>
           <Field label="Supplier" className="col-span-3">
             <select className="input" value={p.supplierId ?? ''} onChange={(e) => set('supplierId', e.target.value || null)}>
               <option value="">—</option>
@@ -119,11 +119,11 @@ export default function PartPanel({ id }: { id: string }) {
             <Field label="Spares to keep"><NumInput value={p.sparesTarget} min={0} onChange={(v) => set('sparesTarget', v)} /></Field>
           </div>
           {moves.length > 0 && (
-            <div className="mt-3 text-xs text-zinc-500">
+            <div className="mt-3 text-xs text-ink-subtle">
               {moves.map((m) => (
-                <div key={m.id} className="flex justify-between border-b border-zinc-100 py-1">
+                <div key={m.id} className="flex justify-between border-b border-hairline py-1">
                   <span>{new Date(m.date).toLocaleDateString()} · {m.ref}</span>
-                  <span className={`num ${m.delta > 0 ? 'text-emerald-600' : 'text-red-600'}`}>{m.delta > 0 ? '+' : ''}{fmtNum(m.delta)}</span>
+                  <span className={`num ${m.delta > 0 ? 'text-tip' : 'text-warning'}`}>{m.delta > 0 ? '+' : ''}{fmtNum(m.delta)}</span>
                 </div>
               ))}
             </div>
@@ -137,7 +137,7 @@ export default function PartPanel({ id }: { id: string }) {
             {usedIn.map((u) => {
               const parent = idx.partById.get(u.parentId)
               return parent && (
-                <li key={u.lineId}><button className="hover:underline" onClick={() => nav.openPart(parent.id)}><span className="font-mono text-xs text-zinc-500">{parent.pn}</span> {parent.name}</button> <span className="text-zinc-500">× {fmtNum(u.qty)}</span></li>
+                <li key={u.lineId}><button className="hover:underline" onClick={() => nav.openPart(parent.id)}><span className="font-mono text-xs text-ink-subtle">{parent.pn}</span> {parent.name}</button> <span className="text-ink-subtle">× {fmtNum(u.qty)}</span></li>
               )
             })}
           </ul>
@@ -149,7 +149,7 @@ export default function PartPanel({ id }: { id: string }) {
           <ul className="space-y-1 text-sm">
             {(idx.children.get(id) ?? []).map((k) => {
               const c = idx.partById.get(k.childId)
-              return c && <li key={k.lineId}><button className="hover:underline" onClick={() => nav.openPart(c.id)}><span className="font-mono text-xs text-zinc-500">{c.pn}</span> {c.name}</button> <span className="text-zinc-500">× {fmtNum(k.qty)}</span></li>
+              return c && <li key={k.lineId}><button className="hover:underline" onClick={() => nav.openPart(c.id)}><span className="font-mono text-xs text-ink-subtle">{c.pn}</span> {c.name}</button> <span className="text-ink-subtle">× {fmtNum(k.qty)}</span></li>
             })}
           </ul>
         </Section>
@@ -160,10 +160,10 @@ export default function PartPanel({ id }: { id: string }) {
           <table className="w-full text-sm">
             <tbody>
               {orderLines.map(({ o, l }) => (
-                <tr key={l.id} className="cursor-pointer border-b border-zinc-100 hover:bg-zinc-50" onClick={() => { nav.openPart(null); nav.openOrder(o.id) }}>
+                <tr key={l.id} className="cursor-pointer border-b border-hairline hover:bg-alt" onClick={() => { nav.openPart(null); nav.openOrder(o.id) }}>
                   <td className="py-1.5 font-mono text-xs">{o.number}</td>
-                  <td className="text-zinc-500">{idx.supplierById.get(o.supplierId ?? '')?.name}</td>
-                  <td className="text-zinc-500">{o.orderDate}</td>
+                  <td className="text-ink-subtle">{idx.supplierById.get(o.supplierId ?? '')?.name}</td>
+                  <td className="text-ink-subtle">{o.orderDate}</td>
                   <td className="num">{fmtNum(l.qty)} × {fmtMoney(l.unitPrice, o.currency)}</td>
                   <td className="pl-3"><OrderStatusChip status={o.status} /></td>
                 </tr>
@@ -186,8 +186,8 @@ export default function PartPanel({ id }: { id: string }) {
 
 export function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="mt-6">
-      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">{title}</h3>
+    <section className="mt-8">
+      <h3 className="mb-3 text-[15px] font-semibold leading-6 text-ink">{title}</h3>
       {children}
     </section>
   )
@@ -196,9 +196,9 @@ export function Section({ title, children }: { title: string; children: ReactNod
 function Stat({ label, value, sub }: { label: string; value: ReactNode; sub?: string }) {
   return (
     <div>
-      <div className="text-xs text-zinc-500">{label}</div>
+      <div className="text-xs text-ink-subtle">{label}</div>
       <div className="num text-left text-base font-semibold">{value}</div>
-      {sub && <div className="text-xs text-zinc-400">{sub}</div>}
+      {sub && <div className="text-xs text-ink-subtle">{sub}</div>}
     </div>
   )
 }

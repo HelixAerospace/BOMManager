@@ -44,14 +44,14 @@ export default function Dashboard() {
     <>
       <PageHeader
         title="Dashboard"
-        subtitle={top ? <>Planning for <b className="text-zinc-700">{units} × {top.name}</b></> : 'Create an assembly to see build planning'}
+        subtitle={top ? <>Planning for <b className="text-ink">{units} × {top.name}</b></> : 'Create an assembly to see build planning'}
         actions={
           topAssemblies.length > 0 && (
             <>
               <select className="input w-auto" value={topId} onChange={(e) => update((d) => void (d.settings.topAssemblyId = e.target.value))}>
                 {topAssemblies.map((a) => <option key={a.id} value={a.id}>{a.pn} {a.name}</option>)}
               </select>
-              <div className="flex items-center gap-1 text-sm text-zinc-500">
+              <div className="flex items-center gap-1 text-sm text-ink-subtle">
                 Build
                 <input type="number" min={1} className="input w-16 num" value={units} onChange={(e) => update((d) => void (d.settings.buildQty = Math.max(1, parseInt(e.target.value) || 1)))} />
                 units
@@ -71,58 +71,58 @@ export default function Dashboard() {
 
         <div className="grid gap-5 lg:grid-cols-5">
           <Card className="lg:col-span-3">
-            <div className="border-b border-zinc-100 px-4 py-3 text-sm font-medium">Needs attention</div>
-            <ul className="divide-y divide-zinc-100">
+            <div className="border-b border-hairline px-4 py-3 text-[15px] font-semibold leading-6">Needs attention</div>
+            <ul className="divide-y divide-hairline">
               {late.map((o) => (
-                <Row key={o.id} icon={<Truck className="h-4 w-4 text-red-500" />} onClick={() => nav.openOrder(o.id)}
+                <Row key={o.id} icon={<Truck className="h-4 w-4 text-warning" />} onClick={() => nav.openOrder(o.id)}
                   title={<>{o.number} from {idx.supplierById.get(o.supplierId ?? '')?.name ?? '—'} is late</>} meta={`expected ${o.expectedDate}`} />
               ))}
               {shortParts.slice(0, 8).map((r) => (
-                <Row key={r.part.id} icon={<AlertTriangle className="h-4 w-4 text-red-500" />} onClick={() => nav.openPart(r.part.id)}
-                  title={<><span className="font-mono text-xs text-zinc-500">{r.part.pn}</span> {r.part.name}</>} meta={`short ${r.shortAfterOrders} for ${units} units`} />
+                <Row key={r.part.id} icon={<AlertTriangle className="h-4 w-4 text-warning" />} onClick={() => nav.openPart(r.part.id)}
+                  title={<><span className="font-mono text-xs text-ink-subtle">{r.part.pn}</span> {r.part.name}</>} meta={`short ${r.shortAfterOrders} for ${units} units`} />
               ))}
               {lowStock.filter((p) => !shortParts.some((r) => r.part.id === p.id)).slice(0, 6).map((p) => (
-                <Row key={p.id} icon={<Warehouse className="h-4 w-4 text-amber-500" />} onClick={() => nav.openPart(p.id)}
-                  title={<><span className="font-mono text-xs text-zinc-500">{p.pn}</span> {p.name}</>} meta={`${p.onHand} on hand, keep ${Math.max(p.minStock, p.sparesTarget)}`} />
+                <Row key={p.id} icon={<Warehouse className="h-4 w-4 text-caution" />} onClick={() => nav.openPart(p.id)}
+                  title={<><span className="font-mono text-xs text-ink-subtle">{p.pn}</span> {p.name}</>} meta={`${p.onHand} on hand, keep ${Math.max(p.minStock, p.sparesTarget)}`} />
               ))}
-              {late.length + shortParts.length + lowStock.length === 0 && <li className="px-4 py-8 text-center text-sm text-zinc-400">Nothing needs attention 🎉</li>}
+              {late.length + shortParts.length + lowStock.length === 0 && <li className="px-4 py-8 text-center text-sm text-ink-subtle">Nothing needs attention</li>}
             </ul>
           </Card>
 
           <Card className="lg:col-span-2">
-            <div className="border-b border-zinc-100 px-4 py-3 text-sm font-medium">Planned cost by subsystem</div>
+            <div className="border-b border-hairline px-4 py-3 text-[15px] font-semibold leading-6">Planned cost by subsystem</div>
             <div className="space-y-3 p-4">
               {subsystems.map((s) => (
                 <button key={s.id} className="block w-full text-left" onClick={() => nav.openPart(s.id)}>
                   <div className="mb-1 flex justify-between text-xs">
-                    <span className="truncate text-zinc-600">{s.name}</span>
-                    <span className="num text-zinc-900">{fmtMoney(s.value)}</span>
+                    <span className="truncate text-ink-muted">{s.name}</span>
+                    <span className="num text-ink">{fmtMoney(s.value)}</span>
                   </div>
-                  <div className="h-2 rounded-full bg-zinc-100">
-                    <div className="h-2 rounded-full bg-zinc-800" style={{ width: `${(s.value / maxSub) * 100}%` }} />
+                  <div className="h-2 rounded-full bg-alt">
+                    <div className="h-2 rounded-full bg-ink" style={{ width: `${(s.value / maxSub) * 100}%` }} />
                   </div>
                 </button>
               ))}
-              {subsystems.length === 0 && <div className="text-sm text-zinc-400">No assembly selected</div>}
+              {subsystems.length === 0 && <div className="text-sm text-ink-subtle">No assembly selected</div>}
             </div>
           </Card>
         </div>
 
         <Card>
-          <div className="flex items-center justify-between border-b border-zinc-100 px-4 py-3 text-sm font-medium">
+          <div className="flex items-center justify-between border-b border-hairline px-4 py-3 text-[15px] font-semibold leading-6">
             Open orders
-            <button className="btn-ghost text-xs" onClick={() => nav.go('orders')}>All orders →</button>
+            <button className="btn-ghost h-auto" onClick={() => nav.go('orders')}>All orders</button>
           </div>
           <table className="grid-table">
             <tbody>
-              {open.length === 0 && <tr><td className="py-6 text-center text-zinc-400">No open orders</td></tr>}
+              {open.length === 0 && <tr><td className="py-6 text-center text-ink-subtle">No open orders</td></tr>}
               {open.map((o) => (
                 <tr key={o.id} className="clickable" onClick={() => nav.openOrder(o.id)}>
                   <td className="w-24 font-mono text-xs">{o.number}</td>
                   <td>{idx.supplierById.get(o.supplierId ?? '')?.name ?? '—'}</td>
                   <td><StepBar status={o.status} /></td>
                   <td><OrderStatusChip status={o.status} late={isLate(o)} /></td>
-                  <td className="text-zinc-500">{o.expectedDate ? `due ${o.expectedDate}` : ''}</td>
+                  <td className="text-ink-subtle">{o.expectedDate ? `due ${o.expectedDate}` : ''}</td>
                   <td className="num">{fmtMoney(orderValueIls(data, o))}</td>
                 </tr>
               ))}
@@ -137,10 +137,10 @@ export default function Dashboard() {
 function Row({ icon, title, meta, onClick }: { icon: React.ReactNode; title: React.ReactNode; meta: string; onClick: () => void }) {
   return (
     <li>
-      <button onClick={onClick} className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-zinc-50">
+      <button onClick={onClick} className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-alt">
         {icon}
         <span className="min-w-0 flex-1 truncate">{title}</span>
-        <span className="text-xs text-zinc-500">{meta}</span>
+        <span className="text-xs text-ink-subtle">{meta}</span>
       </button>
     </li>
   )

@@ -18,7 +18,7 @@ export default function SuppliersScreen() {
     <>
       <PageHeader title="Suppliers" subtitle={`${data.suppliers.length} suppliers`} actions={<button className="btn-primary" onClick={add}><Plus className="h-4 w-4" /> New supplier</button>} />
       <div className="p-6">
-        <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
+        <div className="overflow-hidden rounded-lg border border-hairline bg-surface">
           {list.length === 0 ? (
             <Empty icon={<Building2 className="h-5 w-5" />} title="No suppliers yet" text="Add the shops and machinists you buy from, then link them to parts and orders." action={<button className="btn-primary" onClick={add}><Plus className="h-4 w-4" /> New supplier</button>} />
           ) : (
@@ -31,11 +31,11 @@ export default function SuppliersScreen() {
                   return (
                     <tr key={s.id} className="clickable" onClick={() => nav.openSupplier(s.id)}>
                       <td className="font-medium">{s.name}</td>
-                      <td className="text-zinc-500">{s.currency}</td>
+                      <td className="text-ink-subtle">{s.currency}</td>
                       <td className="num">{data.parts.filter((p) => p.supplierId === s.id).length}</td>
                       <td className="num">{orders.filter(isOpen).length || ''}</td>
                       <td className="num">{spent ? fmtMoney(spent) : ''}</td>
-                      <td className="text-zinc-500">{s.email || s.phone || s.website.replace(/^https?:\/\//, '')}</td>
+                      <td className="text-ink-subtle">{s.email || s.phone || s.website.replace(/^https?:\/\//, '')}</td>
                     </tr>
                   )
                 })}

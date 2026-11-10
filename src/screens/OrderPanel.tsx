@@ -73,7 +73,7 @@ export default function OrderPanel({ id }: { id: string }) {
       subtitle={supplier?.name ?? 'No supplier yet'}
       footer={
         <>
-          <button className="btn-ghost text-red-600" onClick={remove}><Trash2 className="h-4 w-4" /> Delete</button>
+          <button className="btn-ghost text-warning" onClick={remove}><Trash2 className="h-4 w-4" /> Delete</button>
           <div className="flex gap-2">
             {o.status === 'draft' && <button className="btn-primary" disabled={!o.lines.length} onClick={() => setStatus('ordered')}><Send className="h-4 w-4" /> Mark as ordered</button>}
             {o.status === 'ordered' && <button className="btn" onClick={() => setStatus('shipped')}><Truck className="h-4 w-4" /> Mark shipped</button>}
@@ -118,7 +118,7 @@ export default function OrderPanel({ id }: { id: string }) {
       </div>
 
       <Section title="Items">
-        <div className="overflow-hidden rounded-lg border border-zinc-200">
+        <div className="overflow-hidden rounded-lg border border-hairline">
           <table className="grid-table">
             <thead>
               <tr><th>Part</th><th className="num">Qty</th><th className="num">Unit price ({o.currency})</th><th className="num">Line total</th><th className="num">Received</th><th></th></tr>
@@ -128,21 +128,21 @@ export default function OrderPanel({ id }: { id: string }) {
                 const p = idx.partById.get(l.partId)
                 return (
                   <tr key={l.id} className="group">
-                    <td><button className="text-left hover:underline" onClick={() => { nav.openOrder(null); nav.openPart(l.partId) }}><span className="font-mono text-xs text-zinc-500">{p?.pn}</span> {p?.name}</button></td>
+                    <td><button className="text-left hover:underline" onClick={() => { nav.openOrder(null); nav.openPart(l.partId) }}><span className="font-mono text-xs text-ink-subtle">{p?.pn}</span> {p?.name}</button></td>
                     <td className="num w-20"><NumInput className="cell-input num" value={l.qty} min={0} onChange={(v) => update((d) => void (d.orders.find((y) => y.id === id)!.lines.find((y) => y.id === l.id)!.qty = v))} /></td>
                     <td className="num w-28"><NumInput className="cell-input num" value={l.unitPrice} min={0} onChange={(v) => update((d) => void (d.orders.find((y) => y.id === id)!.lines.find((y) => y.id === l.id)!.unitPrice = v))} /></td>
                     <td className="num">{fmtMoney(l.qty * l.unitPrice, o.currency)}</td>
                     <td className="num w-24">
-                      <NumInput className={`cell-input num ${l.qtyReceived >= l.qty && l.qty > 0 ? 'text-emerald-600' : ''}`} value={l.qtyReceived} min={0} onChange={(v) => update((d) => receiveLine(d, id, l.id, v))} />
+                      <NumInput className={`cell-input num ${l.qtyReceived >= l.qty && l.qty > 0 ? 'text-tip' : ''}`} value={l.qtyReceived} min={0} onChange={(v) => update((d) => receiveLine(d, id, l.id, v))} />
                     </td>
                     <td className="w-8">
-                      {l.qtyReceived === 0 && <button className="text-zinc-300 opacity-0 hover:text-red-600 group-hover:opacity-100" onClick={() => update((d) => { const x = d.orders.find((y) => y.id === id)!; x.lines = x.lines.filter((y) => y.id !== l.id) })}><X className="h-4 w-4" /></button>}
+                      {l.qtyReceived === 0 && <button className="text-ink-subtle opacity-0 hover:text-warning group-hover:opacity-100" onClick={() => update((d) => { const x = d.orders.find((y) => y.id === id)!; x.lines = x.lines.filter((y) => y.id !== l.id) })}><X className="h-4 w-4" /></button>}
                     </td>
                   </tr>
                 )
               })}
               <tr>
-                <td colSpan={6} className="bg-zinc-50">
+                <td colSpan={6} className="bg-alt">
                   <PartPicker
                     parts={data.parts.filter((p) => !idx.children.has(p.id) || p.makeBuy === 'buy')}
                     exclude={new Set(o.lines.map((l) => l.partId))}
@@ -157,7 +157,7 @@ export default function OrderPanel({ id }: { id: string }) {
             </tbody>
           </table>
         </div>
-        <p className="mt-1 text-xs text-zinc-400">Typing a received quantity adds it to stock straight away.</p>
+        <p className="mt-1 text-xs text-ink-subtle">Typing a received quantity adds it to stock straight away.</p>
 
         <div className="mt-4 ml-auto w-80 space-y-1.5 text-sm">
           <Line label="Items">{fmtMoney(goods, o.currency)}</Line>
@@ -172,7 +172,7 @@ export default function OrderPanel({ id }: { id: string }) {
           <Field label="Invoice number" className="col-span-2"><input className="input" value={o.invoiceNumber} onChange={(e) => set('invoiceNumber', e.target.value)} /></Field>
           <Field label={`Invoice total excl. VAT (${o.currency})`} className="col-span-2"><NumInput value={o.invoiceTotal} min={0} placeholder="from invoice" onChange={(v) => set('invoiceTotal', v)} /></Field>
           <div className="col-span-2 self-end pb-2 text-xs">
-            {invDiff != null && (Math.abs(invDiff) < 0.01 ? <span className="text-emerald-600">✓ matches order total</span> : <span className="text-amber-600">{invDiff > 0 ? '+' : ''}{fmtMoney(invDiff, o.currency)} vs order total</span>)}
+            {invDiff != null && (Math.abs(invDiff) < 0.01 ? <span className="text-tip">✓ matches order total</span> : <span className="text-caution">{invDiff > 0 ? '+' : ''}{fmtMoney(invDiff, o.currency)} vs order total</span>)}
           </div>
         </div>
         <div className="mt-3"><Attachments files={o.files} group={o.number} onChange={(f) => set('files', f)} /></div>
@@ -188,7 +188,7 @@ export default function OrderPanel({ id }: { id: string }) {
 function Line({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <span className="text-zinc-500">{label}</span>
+      <span className="text-ink-subtle">{label}</span>
       <span className="num">{children}</span>
     </div>
   )

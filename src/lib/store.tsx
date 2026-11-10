@@ -305,9 +305,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     <Ctx.Provider value={value}>
       {children}
       {error && (
-        <div className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-lg bg-red-600 px-4 py-2 text-sm text-white shadow-lg">
-          {error}
-          <button className="underline" onClick={() => setError(null)}>Dismiss</button>
+        <div role="alert" className="fixed bottom-4 left-1/2 z-50 flex max-w-xl -translate-x-1/2 items-start gap-3 rounded-lg border border-warning-line bg-warning-bg px-4 py-3 text-sm text-ink">
+          <span><b className="text-warning">Warning</b> {error}</span>
+          <button className="font-medium text-accent hover:underline" onClick={() => setError(null)}>Dismiss</button>
         </div>
       )}
     </Ctx.Provider>

@@ -144,7 +144,7 @@ export default function BomScreen() {
             <button className="btn-ghost" onClick={() => setCollapsed(allPaths())}><ChevronsDownUp className="h-4 w-4" /> Collapse</button>
           </div>
         ) : (
-          <div className="flex items-center gap-3 text-sm text-zinc-600">
+          <div className="flex items-center gap-3 text-sm text-ink-muted">
             Units to build <NumInput className="input num w-20" value={units} min={1} onChange={(v) => setUnits(Math.round(v))} />
             <label className="flex items-center gap-1.5"><input type="checkbox" checked={spares} onChange={(e) => setSpares(e.target.checked)} /> include spares targets</label>
           </div>
@@ -153,7 +153,7 @@ export default function BomScreen() {
 
       {view === 'tree' ? (
         <div className="p-6 pt-3">
-          <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
+          <div className="overflow-hidden rounded-lg border border-hairline bg-surface">
             <table className="grid-table">
               <thead>
                 <tr>
@@ -177,47 +177,47 @@ export default function BomScreen() {
                   const isTop = r.depth === 0
                   return (
                     <Fragment key={r.key}>
-                      <tr className={`group ${r.hasKids ? 'bg-zinc-50/60' : ''}`}>
+                      <tr className={`group ${r.hasKids ? 'bg-alt' : ''}`}>
                         <td>
                           <div className="flex items-center gap-1" style={{ paddingLeft: r.depth * 18 }}>
                             {r.hasKids ? (
-                              <button className="text-zinc-400 hover:text-zinc-800" onClick={() => setCollapsed((s) => { const n = new Set(s); n.has(r.key) ? n.delete(r.key) : n.add(r.key); return n })}>
+                              <button className="text-ink-subtle hover:text-ink" onClick={() => setCollapsed((s) => { const n = new Set(s); n.has(r.key) ? n.delete(r.key) : n.add(r.key); return n })}>
                                 {collapsed.has(r.key) ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                               </button>
                             ) : <span className="w-4" />}
                             <button className="flex min-w-0 items-baseline gap-2 text-left hover:underline" onClick={() => nav.openPart(r.part.id)}>
-                              <span className="font-mono text-xs text-zinc-500">{r.part.pn}</span>
+                              <span className="font-mono text-xs text-ink-subtle">{r.part.pn}</span>
                               <span className={`truncate ${r.hasKids ? 'font-medium' : ''}`}>{r.part.name}</span>
-                              {r.part.rev && <span className="whitespace-nowrap text-xs text-zinc-400">rev {r.part.rev}</span>}
+                              {r.part.rev && <span className="whitespace-nowrap text-xs text-ink-subtle">rev {r.part.rev}</span>}
                             </button>
                           </div>
                         </td>
-                        <td>{r.hasKids ? <span className="text-xs text-zinc-500">Assembly</span> : <MakeBuyChip v={r.part.makeBuy} />}</td>
+                        <td>{r.hasKids ? <span className="text-xs text-ink-subtle">Assembly</span> : <MakeBuyChip v={r.part.makeBuy} />}</td>
                         <td className="num w-20">
                           {r.lineId ? (
                             <NumInput className="cell-input num" value={r.qty} min={0} onChange={(v) => update((d) => void (d.bom.find((l) => l.id === r.lineId)!.qty = v))} />
                           ) : '—'}
                         </td>
-                        <td className="num text-zinc-500">{isTop ? '' : fmtNum(r.extQty)}</td>
+                        <td className="num text-ink-subtle">{isTop ? '' : fmtNum(r.extQty)}</td>
                         <td className="num">{fmtMoney(c?.planned)}</td>
                         <td className="num font-medium">{isTop ? fmtMoney(c?.planned) : fmtMoney((c?.planned ?? 0) * r.qty)}</td>
-                        <td className="num text-zinc-500">{r.hasKids ? (c && c.actualCoverage > 0 ? fmtMoney(c.actual) : '') : a ? <span title={`from ${a.orderNumber}`}>{fmtMoney(a.unitIls)}</span> : ''}</td>
+                        <td className="num text-ink-subtle">{r.hasKids ? (c && c.actualCoverage > 0 ? fmtMoney(c.actual) : '') : a ? <span title={`from ${a.orderNumber}`}>{fmtMoney(a.unitIls)}</span> : ''}</td>
                         <td className="num">{r.hasKids ? '' : fmtNum(r.part.onHand)}</td>
                         <td>{!r.hasKids && av && <AvailabilityChip a={availability(av)} />}</td>
                         <td>
                           <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100">
                             {(r.hasKids || r.part.category === 'ASM') && (
-                              <button className="btn-ghost px-1" title="Add part under this" onClick={() => setAddingTo(addingTo === r.key ? null : r.key)}><Plus className="h-4 w-4" /></button>
+                              <button className="btn-icon" title="Add part under this" aria-label="Add part under this" onClick={() => setAddingTo(addingTo === r.key ? null : r.key)}><Plus className="h-4 w-4" /></button>
                             )}
                             {r.lineId && (
-                              <button className="btn-ghost px-1 hover:text-red-600" title="Remove from this assembly" onClick={() => update((d) => void (d.bom = d.bom.filter((l) => l.id !== r.lineId)))}><Trash2 className="h-4 w-4" /></button>
+                              <button className="btn-icon hover:text-warning" title="Remove from this assembly" aria-label="Remove from this assembly" onClick={() => update((d) => void (d.bom = d.bom.filter((l) => l.id !== r.lineId)))}><Trash2 className="h-4 w-4" /></button>
                             )}
                           </div>
                         </td>
                       </tr>
                       {(addingTo === r.key || (isTop && !r.hasKids)) && (
                         <tr>
-                          <td colSpan={10} className="bg-zinc-50">
+                          <td colSpan={10} className="bg-alt">
                             <div className="flex items-center gap-2" style={{ paddingLeft: r.depth * 18 + 24 }}>
                               <div className="w-96"><PartPicker parts={data.parts.filter((p) => p.id !== r.part.id)} onPick={(p) => addChild(r.part.id, p)} placeholder={`Add part to ${r.part.name}…`} /></div>
                               <button className="btn" onClick={() => {
@@ -240,18 +240,18 @@ export default function BomScreen() {
               </tbody>
             </table>
           </div>
-          <p className="mt-2 text-xs text-zinc-400">Hover a row to add or remove parts. Costs are converted to ₪ with the rates in Settings; “Actual” comes from received orders including shipping.</p>
+          <p className="mt-2 text-xs text-ink-subtle">Hover a row to add or remove parts. Costs are converted to ₪ with the rates in Settings; “Actual” comes from received orders including shipping.</p>
         </div>
       ) : (
         <div className="p-6 pt-3">
-          <div className="mb-3 flex items-center justify-between rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm">
+          <div className="mb-3 flex items-center justify-between rounded-lg border border-hairline bg-surface px-4 py-3 text-sm">
             <div>
               Can build <b className="text-lg">{bc?.canBuild ?? 0}</b> now from stock ·{' '}
-              <b className={bc?.rows.some((r) => r.shortAfterOrders > 0) ? 'text-red-600' : 'text-emerald-600'}>{bc?.rows.filter((r) => r.shortAfterOrders > 0).length ?? 0}</b> parts still short for {units} after open orders arrive
+              <b className={bc?.rows.some((r) => r.shortAfterOrders > 0) ? 'text-warning' : 'text-tip'}>{bc?.rows.filter((r) => r.shortAfterOrders > 0).length ?? 0}</b> parts still short for {units} after open orders arrive
             </div>
             <button className="btn-primary" disabled={!bc?.rows.some((r) => r.shortAfterOrders > 0)} onClick={createShortageOrders}><ShoppingCart className="h-4 w-4" /> Create draft orders for shortages</button>
           </div>
-          <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
+          <div className="overflow-hidden rounded-lg border border-hairline bg-surface">
             <table className="grid-table">
               <thead>
                 <tr>
@@ -261,14 +261,14 @@ export default function BomScreen() {
               <tbody>
                 {bc?.rows.map((r) => (
                   <tr key={r.part.id} className="clickable" onClick={() => nav.openPart(r.part.id)}>
-                    <td><span className="font-mono text-xs text-zinc-500">{r.part.pn}</span> {r.part.name}</td>
-                    <td className="text-zinc-500">{idx.supplierById.get(r.part.supplierId ?? '')?.name ?? '—'}</td>
+                    <td><span className="font-mono text-xs text-ink-subtle">{r.part.pn}</span> {r.part.name}</td>
+                    <td className="text-ink-subtle">{idx.supplierById.get(r.part.supplierId ?? '')?.name ?? '—'}</td>
                     <td className="num">{fmtNum(r.perUnit)}</td>
                     <td className="num">{fmtNum(r.required)}</td>
                     <td className="num">{fmtNum(r.onHand)}</td>
                     <td className="num">{r.onOrder ? fmtNum(r.onOrder) : ''}</td>
                     <td className="num">{r.shortNow ? fmtNum(r.shortNow) : ''}</td>
-                    <td className={`num font-medium ${r.shortAfterOrders ? 'text-red-600' : ''}`}>{r.shortAfterOrders ? fmtNum(r.shortAfterOrders) : ''}</td>
+                    <td className={`num font-medium ${r.shortAfterOrders ? 'text-warning' : ''}`}>{r.shortAfterOrders ? fmtNum(r.shortAfterOrders) : ''}</td>
                     <td><AvailabilityChip a={availability(r)} /></td>
                   </tr>
                 ))}

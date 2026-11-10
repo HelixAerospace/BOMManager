@@ -30,7 +30,7 @@ export default function SupplierPanel({ id }: { id: string }) {
       onClose={() => nav.openSupplier(null)}
       footer={
         <>
-          <button className="btn-ghost text-red-600" onClick={remove}><Trash2 className="h-4 w-4" /> Delete</button>
+          <button className="btn-ghost text-warning" onClick={remove}><Trash2 className="h-4 w-4" /> Delete</button>
           <button className="btn-primary" onClick={() => {
             const o = newOrder(data, id)
             update((d) => void d.orders.push(o))
@@ -54,16 +54,16 @@ export default function SupplierPanel({ id }: { id: string }) {
       <Section title="Notes"><textarea className="input min-h-16" value={s.notes} placeholder="Payment terms, contact person, shipping notes…" onChange={(e) => set('notes', e.target.value)} /></Section>
       <Section title={`Parts (${parts.length})`}>
         <ul className="space-y-1 text-sm">
-          {parts.map((p) => <li key={p.id}><button className="hover:underline" onClick={() => { nav.openSupplier(null); nav.openPart(p.id) }}><span className="font-mono text-xs text-zinc-500">{p.pn}</span> {p.name}</button> <span className="text-zinc-400">{p.supplierPn}</span></li>)}
-          {parts.length === 0 && <li className="text-zinc-400">No parts linked yet</li>}
+          {parts.map((p) => <li key={p.id}><button className="hover:underline" onClick={() => { nav.openSupplier(null); nav.openPart(p.id) }}><span className="font-mono text-xs text-ink-subtle">{p.pn}</span> {p.name}</button> <span className="text-ink-subtle">{p.supplierPn}</span></li>)}
+          {parts.length === 0 && <li className="text-ink-subtle">No parts linked yet</li>}
         </ul>
       </Section>
       <Section title={`Orders (${orders.length})`}>
         <ul className="space-y-1 text-sm">
           {orders.map((o) => (
             <li key={o.id} className="flex items-center justify-between">
-              <button className="hover:underline" onClick={() => { nav.openSupplier(null); nav.openOrder(o.id) }}><span className="font-mono text-xs">{o.number}</span> <span className="text-zinc-500">{o.orderDate}</span></button>
-              <span className="flex items-center gap-2"><span className="num text-zinc-500">{fmtMoney(o.lines.reduce((t, l) => t + l.qty * l.unitPrice, 0) + o.shipping, o.currency)}</span><OrderStatusChip status={o.status} late={isLate(o)} /></span>
+              <button className="hover:underline" onClick={() => { nav.openSupplier(null); nav.openOrder(o.id) }}><span className="font-mono text-xs">{o.number}</span> <span className="text-ink-subtle">{o.orderDate}</span></button>
+              <span className="flex items-center gap-2"><span className="num text-ink-subtle">{fmtMoney(o.lines.reduce((t, l) => t + l.qty * l.unitPrice, 0) + o.shipping, o.currency)}</span><OrderStatusChip status={o.status} late={isLate(o)} /></span>
             </li>
           ))}
         </ul>
