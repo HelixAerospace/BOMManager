@@ -22,13 +22,13 @@ function download(name: string, text: string, type = 'text/csv') {
 export default function SettingsScreen() {
   const s = useStore()
   const { data, update } = s
-  const { idx, costs, actual } = useDerived()
+  const { idx, costs, actual, weights } = useDerived()
   const [newCur, setNewCur] = useState('')
 
   const exportParts = () => {
     const rows = data.parts.map((p) => ({
       'Part number': p.pn, Name: p.name, Rev: p.rev, Category: p.category, Type: idx.children.has(p.id) ? 'Assembly' : p.makeBuy === 'make' ? 'Custom' : 'Off-the-shelf',
-      Supplier: idx.supplierById.get(p.supplierId ?? '')?.name ?? '', 'Supplier PN': p.supplierPn, 'Planned cost': p.plannedCost, Currency: p.currency,
+      Supplier: idx.supplierById.get(p.supplierId ?? '')?.name ?? '', 'Supplier PN': p.supplierPn, 'Planned cost per piece': Math.round(p.plannedCost * 10000) / 10000, 'Pack price': p.packPrice ?? '', 'Pieces per pack': p.packQty ?? '', Currency: p.currency, 'Weight (g)': p.weight ?? '', 'Weight rolled up (g)': Math.round((weights.get(p.id)?.grams ?? 0) * 10) / 10,
       'Planned (ILS, rolled up)': Math.round((costs.get(p.id)?.planned ?? 0) * 100) / 100, 'Actual (ILS)': actual.get(p.id) ? Math.round(actual.get(p.id)!.unitIls * 100) / 100 : '',
       'On hand': p.onHand, Location: p.location, 'Min stock': p.minStock, 'Spares target': p.sparesTarget, URL: p.url, Notes: p.notes,
     }))
@@ -170,7 +170,7 @@ function InventorImport() {
     <Card className="p-5">
       <h2 className="mb-1 text-[15px] font-semibold leading-6">Import BOM from Inventor</h2>
       <p className="mb-3 text-sm text-ink-subtle">
-        In Inventor: <i>Assemble › Bill of Materials › Export</i>, choose the <b>Structured</b> view (all levels) and save as <b>.csv</b>. Parts are matched by <b>Part Number</b> (new ones take their category from the prefix, e.g. MEC-); an <i>Estimated Cost</i> column is read as ₪; you’ll see the changes before anything is applied. Lines you added by hand (glue, cables…) are kept.
+        In Inventor: <i>Assemble › Bill of Materials › Export</i>, choose the <b>Structured</b> view (all levels) and save as <b>.csv</b>. Parts are matched by <b>Part Number</b> (new ones take their category from the prefix, e.g. MEC-); an <i>Estimated Cost</i> column is read as ₪; add the <i>Mass</i> column to fill in part weights; you’ll see the changes before anything is applied. Lines you added by hand (glue, cables…) are kept.
       </p>
       <button className="btn" onClick={() => input.current?.click()}><FileUp className="h-4 w-4" /> Choose CSV file…</button>
       <input ref={input} type="file" accept=".csv,text/csv" hidden onChange={(e) => { onFile(e.target.files?.[0]); e.target.value = '' }} />
@@ -204,7 +204,7 @@ function InventorImport() {
               <div className="mb-1 font-medium">{rows.length} rows read · changes:</div>
               <ul className="space-y-0.5 text-ink-muted">
                 <li><b className="text-tip">{plan.newParts.length}</b> new parts</li>
-                <li><b>{plan.updates.length}</b> name / revision updates</li>
+                <li><b>{plan.updates.length}</b> name, revision or weight updates</li>
                 <li><b className="text-tip">{plan.added.length}</b> BOM lines added, <b>{plan.changed.length}</b> quantity changes, <b className="text-warning">{plan.removed.length}</b> removed</li>
               </ul>
               <div className="mt-2 max-h-40 overflow-y-auto font-mono text-xs text-ink-subtle">

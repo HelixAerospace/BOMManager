@@ -2,7 +2,7 @@ import { PackageCheck, Send, Trash2, Truck, X } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useNav } from '../lib/nav'
 import { useDerived } from '../lib/derived'
-import { fmtMoney, isLate } from '../lib/calc'
+import { fmtMoney, fmtNum, isLate, isPacked } from '../lib/calc'
 import { type Order, type OrderStatus, today, uid } from '../lib/types'
 import type { Draft } from 'immer'
 import { Attachments, Field, NumInput, ORDER_STATUS, OrderStatusChip, PartPicker, SidePanel } from '../components/ui'
@@ -121,19 +121,36 @@ export default function OrderPanel({ id }: { id: string }) {
         <div className="overflow-hidden rounded-lg border border-hairline">
           <table className="grid-table">
             <thead>
-              <tr><th>Part</th><th className="num">Qty</th><th className="num">Unit price ({o.currency})</th><th className="num">Line total</th><th className="num">Received</th><th></th></tr>
+              <tr><th>Part</th><th className="num">Qty</th><th className="num">Price ({o.currency})</th><th className="num">Line total</th><th className="num">Received</th><th></th></tr>
             </thead>
             <tbody>
               {o.lines.map((l) => {
                 const p = idx.partById.get(l.partId)
+                // Parts bought in packs are entered in packs here; stock and costs stay in pieces.
+                const f = p && isPacked(p) ? p.packQty! : 1
+                const setLine = (fn: (x: { qty: number; unitPrice: number }) => void) =>
+                  update((d) => fn(d.orders.find((y) => y.id === id)!.lines.find((y) => y.id === l.id)!))
                 return (
                   <tr key={l.id} className="group">
-                    <td><button className="text-left hover:underline" onClick={() => { nav.openOrder(null); nav.openPart(l.partId) }}><span className="font-mono text-xs text-ink-subtle">{p?.pn}</span> {p?.name}</button></td>
-                    <td className="num w-20"><NumInput className="cell-input num" value={l.qty} min={0} onChange={(v) => update((d) => void (d.orders.find((y) => y.id === id)!.lines.find((y) => y.id === l.id)!.qty = v))} /></td>
-                    <td className="num w-28"><NumInput className="cell-input num" value={l.unitPrice} min={0} onChange={(v) => update((d) => void (d.orders.find((y) => y.id === id)!.lines.find((y) => y.id === l.id)!.unitPrice = v))} /></td>
+                    <td>
+                      <button className="text-left hover:underline" onClick={() => { nav.openOrder(null); nav.openPart(l.partId) }}><span className="font-mono text-xs text-ink-subtle">{p?.pn}</span> {p?.name}</button>
+                      {f > 1 && <div className="text-xs text-ink-subtle">in packs of {fmtNum(f)} · {fmtNum(l.qty)} pcs{l.qty % f ? <span className="text-caution"> (not whole packs)</span> : null}</div>}
+                    </td>
+                    <td className="num w-24">
+                      <div className="flex items-center justify-end gap-1">
+                        <NumInput className="cell-input num" value={l.qty / f} min={0} onChange={(v) => setLine((x) => void (x.qty = v * f))} />
+                        <span className="w-9 text-left text-xs text-ink-subtle">{f > 1 ? 'packs' : 'pcs'}</span>
+                      </div>
+                    </td>
+                    <td className="num w-32">
+                      <div className="flex items-center justify-end gap-1">
+                        <NumInput className="cell-input num" value={Math.round(l.unitPrice * f * 10000) / 10000} min={0} onChange={(v) => setLine((x) => void (x.unitPrice = v / f))} />
+                        <span className="w-9 text-left text-xs text-ink-subtle">{f > 1 ? '/pack' : '/pc'}</span>
+                      </div>
+                    </td>
                     <td className="num">{fmtMoney(l.qty * l.unitPrice, o.currency)}</td>
                     <td className="num w-24">
-                      <NumInput className={`cell-input num ${l.qtyReceived >= l.qty && l.qty > 0 ? 'text-tip' : ''}`} value={l.qtyReceived} min={0} onChange={(v) => update((d) => receiveLine(d, id, l.id, v))} />
+                      <NumInput className={`cell-input num ${l.qtyReceived >= l.qty && l.qty > 0 ? 'text-tip' : ''}`} value={l.qtyReceived / f} min={0} onChange={(v) => update((d) => receiveLine(d, id, l.id, v * f))} />
                     </td>
                     <td className="w-8">
                       {l.qtyReceived === 0 && <button className="text-ink-subtle opacity-0 hover:text-warning group-hover:opacity-100" onClick={() => update((d) => { const x = d.orders.find((y) => y.id === id)!; x.lines = x.lines.filter((y) => y.id !== l.id) })}><X className="h-4 w-4" /></button>}
@@ -149,7 +166,7 @@ export default function OrderPanel({ id }: { id: string }) {
                     onPick={(p) => update((d) => {
                       const x = d.orders.find((y) => y.id === id)!
                       const price = p.currency === x.currency ? p.plannedCost : (p.plannedCost * (d.settings.fx[p.currency] ?? 1)) / (d.settings.fx[x.currency] ?? 1)
-                      x.lines.push({ id: uid(), partId: p.id, qty: 1, unitPrice: Math.round(price * 100) / 100, qtyReceived: 0 })
+                      x.lines.push({ id: uid(), partId: p.id, qty: isPacked(p) ? p.packQty! : 1, unitPrice: Math.round(price * 10000) / 10000, qtyReceived: 0 })
                     })}
                   />
                 </td>
@@ -157,7 +174,7 @@ export default function OrderPanel({ id }: { id: string }) {
             </tbody>
           </table>
         </div>
-        <p className="mt-1 text-xs text-ink-subtle">Typing a received quantity adds it to stock straight away.</p>
+        <p className="mt-1 text-xs text-ink-subtle">Typing a received quantity adds it to stock straight away. Parts bought in packs are ordered and received in packs; stock is counted in pieces.</p>
 
         <div className="mt-4 ml-auto w-80 space-y-1.5 text-sm">
           <Line label="Items">{fmtMoney(goods, o.currency)}</Line>

@@ -3,7 +3,7 @@ import { Boxes, Plus } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useNav } from '../lib/nav'
 import { useDerived } from '../lib/derived'
-import { fmtMoney, fmtNum, nextPn, stockState, toIls } from '../lib/calc'
+import { fmtMoney, fmtNum, fmtWeight, isPacked, nextPn, stockState, toIls } from '../lib/calc'
 import { type BomData, type MakeBuy, type Part, uid } from '../lib/types'
 import { Empty, FilterTabs, MakeBuyChip, PageHeader, SearchBox, StockChip } from '../components/ui'
 
@@ -18,7 +18,7 @@ export function newPart(data: BomData, prefix: string, makeBuy: MakeBuy): Part {
 export default function PartsScreen() {
   const { data, update } = useStore()
   const nav = useNav()
-  const { idx, actual } = useDerived()
+  const { idx, actual, weights } = useDerived()
   const [q, setQ] = useState('')
   const [cat, setCat] = useState('all')
   const [newCat, setNewCat] = useState(data.settings.categories.find((c) => c.prefix !== 'ASM')?.prefix ?? 'PUR')
@@ -67,7 +67,7 @@ export default function PartsScreen() {
             <table className="grid-table">
               <thead>
                 <tr>
-                  <th>Part number</th><th>Name</th><th>Rev</th><th>Type</th><th>Supplier</th><th className="num">Planned unit</th><th className="num">Planned (₪)</th><th className="num">Actual (₪)</th><th className="num">On hand</th><th>Stock</th><th className="num">Used in</th>
+                  <th>Part number</th><th>Name</th><th>Rev</th><th>Type</th><th>Supplier</th><th className="num">Price</th><th className="num">Planned (₪)</th><th className="num">Actual (₪)</th><th className="num">Weight</th><th className="num">On hand</th><th>Stock</th><th className="num">Used in</th>
                 </tr>
               </thead>
               <tbody>
@@ -83,7 +83,7 @@ export default function PartsScreen() {
                       <td className="text-ink-subtle">{p.rev}</td>
                       <td>{isAsm ? <span className="text-xs text-ink-subtle">Assembly</span> : <MakeBuyChip v={p.makeBuy} />}</td>
                       <td className="whitespace-nowrap text-ink-subtle">{idx.supplierById.get(p.supplierId ?? '')?.name ?? ''}</td>
-                      <td className="num text-ink-subtle">{p.plannedCost ? fmtMoney(p.plannedCost, p.currency) : ''}</td>
+                      <td className="num text-ink-subtle">{isPacked(p) && p.packPrice != null ? <span title={`${fmtMoney(p.plannedCost, p.currency)} per piece`}>{fmtMoney(p.packPrice, p.currency)} / {fmtNum(p.packQty!)}</span> : p.plannedCost ? fmtMoney(p.plannedCost, p.currency) : ''}</td>
                       <td className="num">{planned ? fmtMoney(planned) : ''}</td>
                       <td className="num">
                         {a ? (
@@ -93,6 +93,7 @@ export default function PartsScreen() {
                           </span>
                         ) : ''}
                       </td>
+                      <td className="num">{isAsm ? <span className="text-ink-muted">{fmtWeight(weights.get(p.id)?.grams)}</span> : p.weight != null ? fmtWeight(p.weight) : <span className="text-ink-subtle">—</span>}</td>
                       <td className="num">{isAsm ? '' : fmtNum(p.onHand)}</td>
                       <td>{!isAsm && <StockChip s={stockState(p)} />}</td>
                       <td className="num text-ink-subtle">{idx.parents.get(p.id)?.length || ''}</td>

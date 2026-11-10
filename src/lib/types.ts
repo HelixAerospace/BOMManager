@@ -15,8 +15,11 @@ export interface Part {
   makeBuy: MakeBuy
   rev: string
   unit: string // pcs, m, g ...
-  plannedCost: number // per unit, in `currency`
+  plannedCost: number // per unit (piece), in `currency`. Derived from packPrice / packQty when both are set.
   currency: string
+  packPrice?: number | null // price of one pack, when the part is bought in packs (e.g. 100 screws)
+  packQty?: number | null // pieces per pack
+  weight?: number | null // grams per unit; for assemblies, extra weight on top of the children (glue, wiring…)
   supplierId: ID | null
   supplierPn: string
   url: string

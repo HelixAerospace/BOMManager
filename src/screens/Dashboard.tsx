@@ -3,13 +3,13 @@ import { AlertTriangle, ListTree, Truck, Warehouse } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useNav } from '../lib/nav'
 import { useDerived } from '../lib/derived'
-import { buildCheck, fmtMoney, isLate, isOpen, orderValueIls, stockState } from '../lib/calc'
+import { buildCheck, fmtMoney, fmtWeight, isLate, isOpen, orderValueIls, stockState } from '../lib/calc'
 import { Card, Empty, Kpi, OrderStatusChip, PageHeader, StepBar } from '../components/ui'
 
 export default function Dashboard() {
   const { data, update } = useStore()
   const nav = useNav()
-  const { idx, costs, topAssemblies } = useDerived()
+  const { idx, costs, weights, topAssemblies } = useDerived()
   const topId = data.settings.topAssemblyId && idx.partById.has(data.settings.topAssemblyId) ? data.settings.topAssemblyId : topAssemblies[0]?.id
   const top = topId ? idx.partById.get(topId) : undefined
   const units = data.settings.buildQty || 1
@@ -31,6 +31,17 @@ export default function Dashboard() {
     return rows.sort((a, b) => b.value - a.value)
   }, [topId, idx, costs])
   const maxSub = Math.max(1, ...subsystems.map((s) => s.value))
+  const weightRows = useMemo(() => {
+    if (!topId) return []
+    const rows = (idx.children.get(topId) ?? []).map((k) => {
+      const p = idx.partById.get(k.childId)!
+      const w = weights.get(p.id)
+      return { id: p.id, name: p.name, grams: (w?.grams ?? 0) * k.qty, missing: w?.missing ?? 0 }
+    })
+    return rows.sort((a, b) => b.grams - a.grams)
+  }, [topId, idx, weights])
+  const topWeight = topId ? weights.get(topId) : undefined
+  const totalGrams = topWeight?.grams ?? 0
 
   if (data.parts.length === 0)
     return (
@@ -61,11 +72,12 @@ export default function Dashboard() {
         }
       />
       <div className="space-y-5 p-6">
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
           <Kpi label="Cost per unit (planned)" value={fmtMoney(cost?.planned)} sub={cost && cost.actualCoverage > 0 ? <>Actual so far {fmtMoney(cost.actual)} · {Math.round(cost.actualCoverage * 100)}% known</> : 'No received orders yet'} onClick={() => nav.go('bom')} />
           <Kpi label="Can build now" value={bc ? bc.canBuild : '—'} sub={`from stock on hand, target ${units}`} tone={bc && bc.canBuild >= units ? 'green' : 'amber'} onClick={() => nav.go('bom')} />
           <Kpi label={`Parts short for ${units} units`} value={shortParts.length} sub="after open orders arrive" tone={shortParts.length ? 'red' : 'green'} onClick={() => nav.go('bom')} />
           <Kpi label="Open orders" value={open.length} sub={`${fmtMoney(openValue)} on order`} onClick={() => nav.go('orders')} />
+          <Kpi label="Weight per unit" value={fmtWeight(totalGrams)} sub={topWeight && topWeight.missing > 0 ? `${topWeight.missing} part${topWeight.missing > 1 ? 's' : ''} without weight` : 'all parts weighed'} tone={topWeight && topWeight.missing > 0 ? 'amber' : undefined} onClick={() => nav.go('bom')} />
           <Kpi label="Overdue orders" value={late.length} sub={late.length ? 'past expected date' : 'all on time'} tone={late.length ? 'red' : 'green'} onClick={() => nav.go('orders')} />
         </div>
 
@@ -89,7 +101,8 @@ export default function Dashboard() {
             </ul>
           </Card>
 
-          <Card className="lg:col-span-2">
+<div className="space-y-5 lg:col-span-2">
+                      <Card>
             <div className="border-b border-hairline px-4 py-3 text-[15px] font-semibold leading-6">Planned cost by subsystem</div>
             <div className="space-y-3 p-4">
               {subsystems.map((s) => (
@@ -106,6 +119,28 @@ export default function Dashboard() {
               {subsystems.length === 0 && <div className="text-sm text-ink-subtle">No assembly selected</div>}
             </div>
           </Card>
+            <Card>
+              <div className="flex items-baseline justify-between border-b border-hairline px-4 py-3">
+                <span className="text-[15px] font-semibold leading-6">Weight by subsystem</span>
+                <span className="text-sm text-ink-muted">total <b className="text-ink">{fmtWeight(totalGrams)}</b></span>
+              </div>
+              <div className="space-y-3 p-4">
+                {weightRows.map((s) => (
+                  <button key={s.id} className="block w-full text-left" onClick={() => nav.openPart(s.id)}>
+                    <div className="mb-1 flex justify-between gap-2 text-xs">
+                      <span className="truncate text-ink-muted">{s.name}{s.missing > 0 && <span className="text-caution"> · {s.missing} without weight</span>}</span>
+                      <span className="num whitespace-nowrap text-ink">{fmtWeight(s.grams)}{totalGrams > 0 && <span className="text-ink-subtle"> · {Math.round((s.grams / totalGrams) * 100)}%</span>}</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-alt">
+                      <div className="h-2 rounded-full bg-ink" style={{ width: `${totalGrams ? (s.grams / Math.max(...weightRows.map((x) => x.grams), 1)) * 100 : 0}%` }} />
+                    </div>
+                  </button>
+                ))}
+                {weightRows.length === 0 && <div className="text-sm text-ink-subtle">No assembly selected</div>}
+                {topWeight && topWeight.missing > 0 && <button className="btn-ghost h-auto px-0" onClick={() => nav.go('bom')}>{topWeight.missing === 1 ? '1 part has' : `${topWeight.missing} parts have`} no weight yet</button>}
+              </div>
+            </Card>
+          </div>
         </div>
 
         <Card>

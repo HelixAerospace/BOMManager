@@ -10,7 +10,9 @@ export function toIls(data: BomData, amount: number, currency: string, rate?: nu
 export const fmtMoney = (v: number | null | undefined, cur = 'ILS') => {
   if (v == null || Number.isNaN(v)) return '—'
   try {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: cur, maximumFractionDigits: v !== 0 && Math.abs(v) < 10 ? 2 : 0 }).format(v)
+    const a = Math.abs(v)
+    const digits = v === 0 || a >= 10 ? 0 : a < 1 ? 4 : 2 // small per-piece prices (e.g. screws) keep their precision
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: cur, minimumFractionDigits: digits ? 2 : 0, maximumFractionDigits: digits }).format(v)
   } catch {
     return `${v.toFixed(2)} ${cur}`
   }
@@ -217,3 +219,49 @@ export function nextPoNumber(data: BomData) {
 export function isAssembly(idx: Idx, id: ID) {
   return (idx.children.get(id)?.length ?? 0) > 0
 }
+
+// ---------- weight ----------
+export interface WeightInfo {
+  grams: number // per one unit (rolled up for assemblies)
+  missing: number // number of leaf BOM lines below this with no weight entered
+}
+
+/** Rolled-up weight per part. Leaf parts use their own weight; assemblies add their children
+ *  (× qty) plus any extra weight entered on the assembly itself. */
+export function rollupWeights(data: BomData, idx: Idx) {
+  const memo = new Map<ID, WeightInfo>()
+  const visit = (id: ID, depth = 0): WeightInfo => {
+    if (memo.has(id)) return memo.get(id)!
+    const p = idx.partById.get(id)
+    if (!p || depth > 50) return { grams: 0, missing: 0 }
+    const kids = idx.children.get(id) ?? []
+    const own = p.weight ?? 0
+    let info: WeightInfo
+    if (kids.length === 0) info = { grams: own, missing: p.weight == null ? 1 : 0 }
+    else {
+      let grams = own
+      let missing = 0
+      for (const k of kids) {
+        const c = visit(k.childId, depth + 1)
+        grams += c.grams * k.qty
+        missing += c.missing
+      }
+      info = { grams, missing }
+    }
+    memo.set(id, info)
+    return info
+  }
+  for (const p of data.parts) visit(p.id)
+  return memo
+}
+
+export function fmtWeight(g: number | null | undefined) {
+  if (g == null || Number.isNaN(g)) return '—'
+  if (Math.abs(g) >= 1000) return `${new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(g / 1000)} kg`
+  return `${new Intl.NumberFormat('en-US', { maximumFractionDigits: Math.abs(g) < 10 ? 2 : 1 }).format(g)} g`
+}
+
+// ---------- packs ----------
+export const isPacked = (p: Part) => !!p.packQty && p.packQty > 1
+/** Round a quantity of pieces up to whole packs. */
+export const roundToPacks = (p: Part, pieces: number) => (isPacked(p) ? Math.ceil(pieces / p.packQty!) * p.packQty! : Math.ceil(pieces))

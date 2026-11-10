@@ -3,7 +3,7 @@ import { ChevronDown, ChevronRight, ListTree, Plus, ShoppingCart, Trash2, Chevro
 import { useStore } from '../lib/store'
 import { useNav } from '../lib/nav'
 import { useDerived } from '../lib/derived'
-import { availability, buildCheck, createsCycle, fmtMoney, fmtNum, nextPoNumber } from '../lib/calc'
+import { availability, buildCheck, createsCycle, fmtMoney, fmtNum, fmtWeight, nextPoNumber, roundToPacks } from '../lib/calc'
 import { type ID, type Part, uid } from '../lib/types'
 import { AvailabilityChip, Empty, FilterTabs, MakeBuyChip, NumInput, PageHeader, PartPicker } from '../components/ui'
 import { newPart } from './Parts'
@@ -11,11 +11,11 @@ import { newPart } from './Parts'
 export default function BomScreen() {
   const { data, update, notify } = useStore()
   const nav = useNav()
-  const { idx, costs, actual, topAssemblies } = useDerived()
+  const { idx, costs, actual, weights, topAssemblies } = useDerived()
   const assemblies = data.parts.filter((p) => idx.children.has(p.id) || p.category === 'ASM')
   const [sel, setSel] = useState<ID | undefined>(data.settings.topAssemblyId ?? topAssemblies[0]?.id)
   const topId = sel && idx.partById.has(sel) ? sel : topAssemblies[0]?.id ?? assemblies[0]?.id
-  const [view, setView] = useState<'tree' | 'build'>('tree')
+  const [view, setView] = useState<'tree' | 'weight' | 'build'>('tree')
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const [addingTo, setAddingTo] = useState<ID | null>(null)
   const [units, setUnits] = useState(data.settings.buildQty || 1)
@@ -47,7 +47,7 @@ export default function BomScreen() {
     const inDrafts = new Map<ID, number>()
     for (const o of data.orders) if (o.status === 'draft') for (const l of o.lines) inDrafts.set(l.partId, (inDrafts.get(l.partId) ?? 0) + l.qty)
     const short = bc.rows
-      .map((r) => ({ part: r.part, qty: Math.ceil(r.shortAfterOrders - (inDrafts.get(r.part.id) ?? 0)) }))
+      .map((r) => ({ part: r.part, qty: roundToPacks(r.part, r.shortAfterOrders - (inDrafts.get(r.part.id) ?? 0)) }))
       .filter((r) => r.qty > 0)
     if (!short.length) return notify('Everything short is already in draft orders')
     const groups = new Map<string, typeof short>()
@@ -76,7 +76,7 @@ export default function BomScreen() {
           if (existing) existing.qty += r.qty
           else {
             const price = r.part.currency === o.currency ? r.part.plannedCost : (r.part.plannedCost * (d.settings.fx[r.part.currency] ?? 1)) / (d.settings.fx[o.currency] ?? 1)
-            o.lines.push({ id: uid(), partId: r.part.id, qty: r.qty, unitPrice: Math.round(price * 100) / 100, qtyReceived: 0 })
+            o.lines.push({ id: uid(), partId: r.part.id, qty: r.qty, unitPrice: Math.round(price * 10000) / 10000, qtyReceived: 0 })
           }
         }
       }
@@ -95,6 +95,8 @@ export default function BomScreen() {
 
   const top = idx.partById.get(topId!)!
   const topCost = costs.get(top.id)
+  const topWeight = weights.get(top.id)
+  const totalGrams = topWeight?.grams || 0
 
   // Flatten the tree for rendering.
   type Row = { key: string; part: Part; lineId: ID | null; parentId: ID | null; qty: number; extQty: number; depth: number; hasKids: boolean }
@@ -126,7 +128,7 @@ export default function BomScreen() {
     <>
       <PageHeader
         title="BOM"
-        subtitle={<>{top.pn} · rev {top.rev} · planned {fmtMoney(topCost?.planned)} per unit{topCost && topCost.actualCoverage > 0 && <> · actual {fmtMoney(topCost.actual)} ({Math.round(topCost.actualCoverage * 100)}% known)</>}</>}
+        subtitle={<>{top.pn} · rev {top.rev} · planned {fmtMoney(topCost?.planned)} per unit{topCost && topCost.actualCoverage > 0 && <> · actual {fmtMoney(topCost.actual)} ({Math.round(topCost.actualCoverage * 100)}% known)</>} · {fmtWeight(topWeight?.grams)}{topWeight && topWeight.missing > 0 && <span className="text-caution"> ({topWeight.missing} without weight)</span>}</>}
         actions={
           <>
             <select className="input w-auto" value={top.id} onChange={(e) => setSel(e.target.value)}>
@@ -137,8 +139,8 @@ export default function BomScreen() {
         }
       />
       <div className="flex items-center justify-between gap-3 px-6 pt-4">
-        <FilterTabs value={view} onChange={setView} options={[{ value: 'tree', label: 'Structure & cost' }, { value: 'build', label: 'Build check' }]} />
-        {view === 'tree' ? (
+        <FilterTabs value={view} onChange={setView} options={[{ value: 'tree', label: 'Structure & cost' }, { value: 'weight', label: 'Weight' }, { value: 'build', label: 'Build check' }]} />
+        {view !== 'build' ? (
           <div className="flex gap-1">
             <button className="btn-ghost" onClick={() => setCollapsed(new Set())}><ChevronsUpDown className="h-4 w-4" /> Expand all</button>
             <button className="btn-ghost" onClick={() => setCollapsed(allPaths())}><ChevronsDownUp className="h-4 w-4" /> Collapse</button>
@@ -151,23 +153,36 @@ export default function BomScreen() {
         )}
       </div>
 
-      {view === 'tree' ? (
+      {view !== 'build' ? (
         <div className="p-6 pt-3">
           <div className="overflow-hidden rounded-lg border border-hairline bg-surface">
             <table className="grid-table">
               <thead>
-                <tr>
-                  <th>Part</th>
-                  <th>Type</th>
-                  <th className="num">Qty</th>
-                  <th className="num">Total qty</th>
-                  <th className="num">Unit cost (₪)</th>
-                  <th className="num">Ext. cost (₪)</th>
-                  <th className="num">Actual unit (₪)</th>
-                  <th className="num">On hand</th>
-                  <th>For {units} units</th>
-                  <th className="w-16"></th>
-                </tr>
+                {view === 'tree' ? (
+                  <tr>
+                    <th>Part</th>
+                    <th>Type</th>
+                    <th className="num">Qty</th>
+                    <th className="num">Total qty</th>
+                    <th className="num">Unit cost (₪)</th>
+                    <th className="num">Ext. cost (₪)</th>
+                    <th className="num">Actual unit (₪)</th>
+                    <th className="num">On hand</th>
+                    <th>For {units} units</th>
+                    <th className="w-16"></th>
+                  </tr>
+                ) : (
+                  <tr>
+                    <th>Part</th>
+                    <th className="num">Qty</th>
+                    <th className="num">Total qty</th>
+                    <th className="num">Unit weight</th>
+                    <th className="num">Weight in 1 {top.name}</th>
+                    <th className="num">Share</th>
+                    <th className="w-48"></th>
+                    <th className="w-16"></th>
+                  </tr>
+                )}
               </thead>
               <tbody>
                 {rows.map((r) => {
@@ -175,6 +190,7 @@ export default function BomScreen() {
                   const a = actual.get(r.part.id)
                   const av = availByPart.get(r.part.id)
                   const isTop = r.depth === 0
+                  const wt = weights.get(r.part.id)
                   return (
                     <Fragment key={r.key}>
                       <tr className={`group ${r.hasKids ? 'bg-alt' : ''}`}>
@@ -192,6 +208,7 @@ export default function BomScreen() {
                             </button>
                           </div>
                         </td>
+{view === 'tree' ? (<>
                         <td>{r.hasKids ? <span className="text-xs text-ink-subtle">Assembly</span> : <MakeBuyChip v={r.part.makeBuy} />}</td>
                         <td className="num w-20">
                           {r.lineId ? (
@@ -204,6 +221,27 @@ export default function BomScreen() {
                         <td className="num text-ink-subtle">{r.hasKids ? (c && c.actualCoverage > 0 ? fmtMoney(c.actual) : '') : a ? <span title={`from ${a.orderNumber}`}>{fmtMoney(a.unitIls)}</span> : ''}</td>
                         <td className="num">{r.hasKids ? '' : fmtNum(r.part.onHand)}</td>
                         <td>{!r.hasKids && av && <AvailabilityChip a={availability(av)} />}</td>
+</>) : (<>
+                        <td className="num w-20">
+                          {r.lineId ? (
+                            <NumInput className="cell-input num" value={r.qty} min={0} onChange={(v) => update((d) => void (d.bom.find((l) => l.id === r.lineId)!.qty = v))} />
+                          ) : '—'}
+                        </td>
+                        <td className="num text-ink-subtle">{isTop ? '' : fmtNum(r.extQty)}</td>
+                        <td className="num">
+                          {r.hasKids ? fmtWeight(wt?.grams) : r.part.weight == null ? <span className="text-caution">not set</span> : fmtWeight(r.part.weight)}
+                          {r.hasKids && wt && wt.missing > 0 && <div className="text-xs text-caution">{wt.missing} not set</div>}
+                        </td>
+                        <td className="num font-medium">{fmtWeight((wt?.grams ?? 0) * r.extQty)}</td>
+                        <td className="num text-ink-muted">{totalGrams ? `${Math.round((((wt?.grams ?? 0) * r.extQty) / totalGrams) * 1000) / 10}%` : ''}</td>
+                        <td>
+                          {!isTop && totalGrams > 0 && (
+                            <div className="h-2 rounded-full bg-hairline" aria-hidden>
+                              <div className={`h-2 rounded-full ${r.hasKids ? 'bg-ink' : 'bg-ink-muted'}`} style={{ width: `${Math.min(100, (((wt?.grams ?? 0) * r.extQty) / totalGrams) * 100)}%` }} />
+                            </div>
+                          )}
+                        </td>
+</>)}
                         <td>
                           <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100">
                             {(r.hasKids || r.part.category === 'ASM') && (
@@ -217,7 +255,7 @@ export default function BomScreen() {
                       </tr>
                       {(addingTo === r.key || (isTop && !r.hasKids)) && (
                         <tr>
-                          <td colSpan={10} className="bg-alt">
+                          <td colSpan={view === 'tree' ? 10 : 8} className="bg-alt">
                             <div className="flex items-center gap-2" style={{ paddingLeft: r.depth * 18 + 24 }}>
                               <div className="w-96"><PartPicker parts={data.parts.filter((p) => p.id !== r.part.id)} onPick={(p) => addChild(r.part.id, p)} placeholder={`Add part to ${r.part.name}…`} /></div>
                               <button className="btn" onClick={() => {
@@ -240,7 +278,7 @@ export default function BomScreen() {
               </tbody>
             </table>
           </div>
-          <p className="mt-2 text-xs text-ink-subtle">Hover a row to add or remove parts. Costs are converted to ₪ with the rates in Settings; “Actual” comes from received orders including shipping.</p>
+          <p className="mt-2 text-xs text-ink-subtle">{view === 'tree' ? 'Hover a row to add or remove parts. Costs are converted to ₪ with the rates in Settings; “Actual” comes from received orders including shipping.' : 'Weights come from each part (grams per unit). Assemblies add up their parts plus any extra weight entered on the assembly. Click a part to enter its weight.'}</p>
         </div>
       ) : (
         <div className="p-6 pt-3">
