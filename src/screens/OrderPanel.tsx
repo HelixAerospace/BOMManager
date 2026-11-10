@@ -29,7 +29,7 @@ function receiveLine(d: Draft<import('../lib/types').BomData>, orderId: string, 
 
 export default function OrderPanel({ id }: { id: string }) {
   const { fmt: money, sym, cur: dispCur } = useMoney()
-  const { data, update } = useStore()
+  const { data, update, saveIfDirty } = useStore()
   const nav = useNav()
   const { idx } = useDerived()
   const o = data.orders.find((x) => x.id === id)
@@ -62,6 +62,7 @@ export default function OrderPanel({ id }: { id: string }) {
     if (!confirm(`Delete ${o.number}?`)) return
     update((d) => void (d.orders = d.orders.filter((x) => x.id !== id)))
     nav.openOrder(null)
+    void saveIfDirty()
   }
 
   const supplier = idx.supplierById.get(o.supplierId ?? '')
@@ -72,16 +73,15 @@ export default function OrderPanel({ id }: { id: string }) {
       onClose={() => nav.openOrder(null)}
       title={<span className="flex items-center gap-3">{o.number} <OrderStatusChip status={o.status} late={isLate(o)} /></span>}
       subtitle={supplier?.name ?? 'No supplier yet'}
-      footer={
+      footerLeft={<button className="btn-ghost text-warning" onClick={remove}><Trash2 className="h-4 w-4" /> Delete</button>}
+      footerRight={
         <>
-          <button className="btn-ghost text-warning" onClick={remove}><Trash2 className="h-4 w-4" /> Delete</button>
-          <div className="flex gap-2">
-            {o.status === 'draft' && <button className="btn-primary" disabled={!o.lines.length} onClick={() => setStatus('ordered')}><Send className="h-4 w-4" /> Mark as ordered</button>}
-            {o.status === 'ordered' && <button className="btn" onClick={() => setStatus('shipped')}><Truck className="h-4 w-4" /> Mark shipped</button>}
-            {['ordered', 'shipped', 'partial'].includes(o.status) && <button className="btn-primary" onClick={receiveAll}><PackageCheck className="h-4 w-4" /> Receive everything</button>}
-          </div>
+          {o.status === 'draft' && <button className="btn-primary" disabled={!o.lines.length} onClick={() => setStatus('ordered')}><Send className="h-4 w-4" /> Mark as ordered</button>}
+          {o.status === 'ordered' && <button className="btn" onClick={() => setStatus('shipped')}><Truck className="h-4 w-4" /> Mark shipped</button>}
+          {['ordered', 'shipped', 'partial'].includes(o.status) && <button className="btn-primary" onClick={receiveAll}><PackageCheck className="h-4 w-4" /> Receive everything</button>}
         </>
       }
+      saveStyle={['draft', 'ordered', 'shipped', 'partial'].includes(o.status) ? 'secondary' : 'primary'}
     >
       <div className="grid grid-cols-6 gap-3">
         <Field label="Supplier" className="col-span-3">

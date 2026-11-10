@@ -29,6 +29,7 @@ interface Store {
   error: string | null
   update: (recipe: (d: Draft<BomData>) => void) => void
   save: (force?: boolean) => Promise<void>
+  saveIfDirty: () => Promise<void>
   reload: () => Promise<void>
   openFolder: () => Promise<void>
   reconnect: () => Promise<void>
@@ -62,6 +63,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [toast, setToast] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const loadedRevision = useRef(0)
+  const dataRef = useRef<BomData>(data)
+  const dirtyRef = useRef(false)
+  const savingRef = useRef(false)
+  const pendingSave = useRef(false)
+  const saveRef = useRef<(force?: boolean) => Promise<void>>(async () => {})
+  const setDataSync = useCallback((d: BomData) => {
+    dataRef.current = d
+    setData(d)
+  }, [])
+  const setDirtySync = useCallback((v: boolean) => {
+    dirtyRef.current = v
+    setDirty(v)
+  }, [])
   const toastTimer = useRef<number>(0)
 
   const notify = useCallback((msg: string) => {
@@ -79,10 +93,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       return
     }
     const d = { ...emptyData(), ...st.data, settings: { ...emptyData().settings, ...st.data.settings } }
-    setData(d)
+    setDataSync(d)
     loadedRevision.current = d.revision
     setLastSaved(d.savedAt)
-    setDirty(false)
+    setDirtySync(false)
     setConflict(null)
     setMode('ready')
   }, [])
@@ -106,18 +120,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [load])
 
   const update = useCallback((recipe: (d: Draft<BomData>) => void) => {
-    setData((prev) => produce(prev, recipe))
-    setDirty(true)
+    setDataSync(produce(dataRef.current, recipe))
+    setDirtySync(true)
   }, [])
 
   const save = useCallback(
     async (force = false) => {
       if (demo) {
-        setDirty(false)
+        setDirtySync(false)
         notify('Demo mode: changes are not saved to disk')
         return
       }
       if (!dir) return
+      if (savingRef.current) {
+        pendingSave.current = true // another save is running; save again when it finishes
+        return
+      }
+      savingRef.current = true
       setSaving(true)
       try {
         const disk = await fs.peekRevision(dir)
@@ -125,27 +144,43 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           setConflict({ revision: disk.revision, savedAt: disk.savedAt, savedBy: disk.savedBy })
           return
         }
+        const snapshot = dataRef.current
         const next: BomData = {
-          ...data,
+          ...snapshot,
           revision: Math.max(loadedRevision.current, disk?.revision ?? 0) + 1,
           savedAt: new Date().toISOString(),
           savedBy: fs.deviceName(),
         }
         await fs.writeData(dir, next)
         loadedRevision.current = next.revision
-        setData(next)
         setLastSaved(next.savedAt)
-        setDirty(false)
+        if (dataRef.current === snapshot) {
+          setDataSync(next)
+          setDirtySync(false)
+        } else {
+          // edits were made while saving: keep them (still unsaved) on top of the new revision
+          setDataSync({ ...dataRef.current, revision: next.revision, savedAt: next.savedAt, savedBy: next.savedBy })
+        }
         setConflict(null)
         notify('Saved')
       } catch (e) {
         setError(`Save failed: ${e}`)
       } finally {
+        savingRef.current = false
         setSaving(false)
+        if (pendingSave.current) {
+          pendingSave.current = false
+          if (dirtyRef.current) setTimeout(() => saveRef.current(), 0)
+        }
       }
     },
-    [demo, dir, data, notify],
+    [demo, dir, notify, setDataSync, setDirtySync],
   )
+  saveRef.current = save
+  /** Saves only when there are unsaved changes (used when an edit panel closes). */
+  const saveIfDirty = useCallback(async () => {
+    if (dirtyRef.current) await saveRef.current()
+  }, [])
 
   const reload = useCallback(async () => {
     if (dir) await load(dir)
@@ -241,8 +276,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const startDemo = useCallback(() => {
     setDemo(true)
     setDir(null)
-    setData(sampleData())
-    setDirty(false)
+    setDataSync(sampleData())
+    setDirtySync(false)
     setMode('ready')
   }, [])
 
@@ -250,8 +285,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     await fs.forgetFolder()
     setDir(null)
     setDemo(false)
-    setData(emptyData())
-    setDirty(false)
+    setDataSync(emptyData())
+    setDirtySync(false)
     setMode('welcome')
   }, [])
 
@@ -296,10 +331,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const value = useMemo<Store>(
     () => ({
       mode, demo, folderName: dir?.name ?? '', data, dirty, saving, lastSaved, conflict, updateAvailable, toast, error,
-      update, save, reload, openFolder, reconnect, initFolder, startDemo, closeFolder,
+      update, save, saveIfDirty, reload, openFolder, reconnect, initFolder, startDemo, closeFolder,
       dismissConflict: () => setConflict(null), notify, attach, openFile,
     }),
-    [mode, demo, dir, data, dirty, saving, lastSaved, conflict, updateAvailable, toast, error, update, save, reload, openFolder, reconnect, initFolder, startDemo, closeFolder, notify, attach, openFile],
+    [mode, demo, dir, data, dirty, saving, lastSaved, conflict, updateAvailable, toast, error, update, save, saveIfDirty, reload, openFolder, reconnect, initFolder, startDemo, closeFolder, notify, attach, openFile],
   )
   return (
     <Ctx.Provider value={value}>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { AlertTriangle, CheckCircle2, Circle, Clock, FileText, Paperclip, Truck, Upload, X, XCircle, PackageCheck, PackageMinus, Search } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Circle, Clock, FileText, Paperclip, Truck, Upload, X, XCircle, PackageCheck, PackageMinus, Save, Search } from 'lucide-react'
 import type { OrderStatus, Part } from '../lib/types'
 import type { Availability, StockState } from '../lib/calc'
 import { useStore } from '../lib/store'
@@ -108,24 +108,45 @@ export function Empty({ icon, title, text, action }: { icon: ReactNode; title: s
 }
 
 /** Right-hand slide-over panel for details/editing. */
-export function SidePanel({ title, subtitle, onClose, children, footer, wide }: { title: ReactNode; subtitle?: ReactNode; onClose: () => void; children: ReactNode; footer?: ReactNode; wide?: boolean }) {
+/** Right-hand edit panel. Closing it in any way (Save, X, Esc, clicking outside) saves changes to the folder. */
+export function SidePanel({ title, subtitle, onClose, children, footerLeft, footerRight, saveStyle = 'primary', wide }: {
+  title: ReactNode; subtitle?: ReactNode; onClose: () => void; children: ReactNode
+  footerLeft?: ReactNode; footerRight?: ReactNode; saveStyle?: 'primary' | 'secondary'; wide?: boolean
+}) {
+  const { saveIfDirty, saving } = useStore()
+  const close = useRef<() => void>(() => {})
+  close.current = () => {
+    // Commit the field being edited (number fields save on blur) before saving.
+    const el = document.activeElement as HTMLElement | null
+    if (el && typeof el.blur === 'function') el.blur()
+    onClose()
+    void saveIfDirty()
+  }
   useEffect(() => {
-    const k = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    const k = (e: KeyboardEvent) => e.key === 'Escape' && close.current()
     window.addEventListener('keydown', k)
     return () => window.removeEventListener('keydown', k)
-  }, [onClose])
+  }, [])
   return (
-    <div className="fixed inset-0 z-30 flex justify-end bg-black/40" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="fixed inset-0 z-30 flex justify-end bg-black/40" onMouseDown={(e) => e.target === e.currentTarget && close.current()}>
       <div className={`flex h-full w-full ${wide ? 'max-w-3xl' : 'max-w-xl'} flex-col border-l border-hairline bg-surface`}>
         <div className="flex items-start justify-between border-b border-hairline px-5 py-4">
           <div>
             <div className="text-[19px] font-semibold leading-[26px]">{title}</div>
             {subtitle && <div className="mt-0.5 text-sm text-ink-subtle">{subtitle}</div>}
           </div>
-          <button className="btn-icon" onClick={onClose} aria-label="Close"><X className="h-4 w-4" /></button>
+          <button className="btn-icon" onClick={() => close.current()} aria-label="Save and close" title="Save and close"><X className="h-4 w-4" /></button>
         </div>
         <div className="flex-1 overflow-y-auto px-5 py-4">{children}</div>
-        {footer && <div className="flex items-center justify-between gap-2 border-t border-hairline px-5 py-3">{footer}</div>}
+        <div className="flex items-center justify-between gap-2 border-t border-hairline px-5 py-3">
+          <div>{footerLeft}</div>
+          <div className="flex items-center gap-2">
+            {footerRight}
+            <button className={saveStyle === 'primary' ? 'btn-primary' : 'btn'} disabled={saving} onClick={() => close.current()}>
+              <Save className="h-4 w-4" /> Save
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   )

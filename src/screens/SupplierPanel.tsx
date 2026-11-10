@@ -8,7 +8,7 @@ import { CURRENCIES, Section } from './PartPanel'
 import { newOrder } from './Orders'
 
 export default function SupplierPanel({ id }: { id: string }) {
-  const { data, update } = useStore()
+  const { data, update, saveIfDirty } = useStore()
   const nav = useNav()
   const s = data.suppliers.find((x) => x.id === id)
   if (!s) return null
@@ -23,15 +23,16 @@ export default function SupplierPanel({ id }: { id: string }) {
       d.parts.forEach((p) => { if (p.supplierId === id) p.supplierId = null })
     })
     nav.openSupplier(null)
+    void saveIfDirty()
   }
   return (
     <SidePanel
       title={s.name}
       onClose={() => nav.openSupplier(null)}
-      footer={
+      footerLeft={<button className="btn-ghost text-warning" onClick={remove}><Trash2 className="h-4 w-4" /> Delete</button>}
+      footerRight={
         <>
-          <button className="btn-ghost text-warning" onClick={remove}><Trash2 className="h-4 w-4" /> Delete</button>
-          <button className="btn-primary" onClick={() => {
+          <button className="btn" onClick={() => {
             const o = newOrder(data, id)
             update((d) => void d.orders.push(o))
             nav.openSupplier(null)

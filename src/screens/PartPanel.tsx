@@ -11,7 +11,7 @@ export const CURRENCIES = ['ILS', 'USD', 'EUR', 'CNY', 'GBP']
 
 export default function PartPanel({ id }: { id: string }) {
   const { fmt: money, sym, cur: dispCur } = useMoney()
-  const { data, update } = useStore()
+  const { data, update, saveIfDirty } = useStore()
   const nav = useNav()
   const { idx, costs, actual, onOrder, weights } = useDerived()
   const p = idx.partById.get(id)
@@ -53,6 +53,7 @@ export default function PartPanel({ id }: { id: string }) {
       d.bom = d.bom.filter((l) => l.parentId !== id && l.childId !== id)
     })
     nav.openPart(null)
+    void saveIfDirty()
   }
 
   return (
@@ -61,12 +62,7 @@ export default function PartPanel({ id }: { id: string }) {
       onClose={() => nav.openPart(null)}
       title={<span className="flex items-center gap-2"><span className="font-mono text-sm text-ink-subtle">{p.pn}</span> {p.name || 'Unnamed part'}</span>}
       subtitle={<span className="flex items-center gap-2">{isAsm ? 'Assembly' : <MakeBuyChip v={p.makeBuy} />}{!isAsm && <StockChip s={stockState(p)} />} rev {p.rev}</span>}
-      footer={
-        <>
-          <button className="btn-ghost text-warning" onClick={remove}><Trash2 className="h-4 w-4" /> Delete part</button>
-          <button className="btn" onClick={() => nav.openPart(null)}>Close</button>
-        </>
-      }
+      footerLeft={<button className="btn-ghost text-warning" onClick={remove}><Trash2 className="h-4 w-4" /> Delete part</button>}
     >
       <div className="grid grid-cols-5 gap-3 rounded-lg bg-alt p-3 text-sm">
         <Stat label="Planned unit cost" value={money(cost?.planned)} />
