@@ -2,7 +2,7 @@ import { PackageCheck, Send, Trash2, Truck, X } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useNav } from '../lib/nav'
 import { useDerived, useMoney } from '../lib/derived'
-import { fmtMoney, fmtNum, isLate, isPacked } from '../lib/calc'
+import { fmtMoney, fmtNum, isLate, isPacked, lastPriceFrom } from '../lib/calc'
 import { type Order, type OrderStatus, today, uid } from '../lib/types'
 import type { Draft } from 'immer'
 import { Attachments, Field, NumInput, ORDER_STATUS, OrderStatusChip, PartPicker, SidePanel } from '../components/ui'
@@ -166,7 +166,10 @@ export default function OrderPanel({ id }: { id: string }) {
                     exclude={new Set(o.lines.map((l) => l.partId))}
                     onPick={(p) => update((d) => {
                       const x = d.orders.find((y) => y.id === id)!
-                      const price = p.currency === x.currency ? p.plannedCost : (p.plannedCost * (d.settings.fx[p.currency] ?? 1)) / (d.settings.fx[x.currency] ?? 1)
+                      // Default to the last price paid to this supplier; otherwise the planned cost.
+                      const last = lastPriceFrom(d as never, p.id, x.supplierId)
+                      const price = last && last.currency === x.currency ? last.unitPrice
+                        : p.currency === x.currency ? p.plannedCost : (p.plannedCost * (d.settings.fx[p.currency] ?? 1)) / (d.settings.fx[x.currency] ?? 1)
                       x.lines.push({ id: uid(), partId: p.id, qty: isPacked(p) ? p.packQty! : 1, unitPrice: Math.round(price * 10000) / 10000, qtyReceived: 0 })
                     })}
                   />

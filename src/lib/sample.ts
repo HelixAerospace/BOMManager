@@ -18,6 +18,7 @@ export function sampleData(): BomData {
   const cnc = sup('Galil CNC (local machinist)', 'ILS', '')
   const mcm = sup('McMaster-Carr', 'USD', 'https://www.mcmaster.com')
   const holy = sup('Holybro', 'USD', 'https://holybro.com')
+  const getfpv = sup('GetFPV', 'USD', 'https://www.getfpv.com')
 
   const part = (pn: string, name: string, category: string, makeBuy: 'make' | 'buy', cost: number, currency: string, supplierId: string | null, onHand: number, extra: Partial<Part> = {}) => {
     const p: Part = {
@@ -48,6 +49,12 @@ export function sampleData(): BomData {
   const m3 = part('FAS-00001', 'Screw M3x10 SHCS', 'FAS', 'buy', 0.095, 'USD', mcm, 100, { minStock: 50, packPrice: 9.5, packQty: 100, supplierPn: '91290A115', weight: 0.8 })
   const tape = part('CON-00001', 'Threadlocker 243', 'CON', 'buy', 35, 'ILS', null, 1, { unit: 'bottle', minStock: 1 })
 
+  const motorPart = data.parts.find((p) => p.id === motor)!
+  motorPart.sources = [
+    { id: uid(), supplierId: tmotor, supplierPn: 'MN3110-700', url: 'https://store.tmotor.com', leadTimeDays: 21, notes: '' },
+    { id: uid(), supplierId: getfpv, supplierPn: 'TM-MN3110-KV700', url: 'https://www.getfpv.com', leadTimeDays: 7, notes: '' },
+  ]
+
   line(drone, frame, 1)
   line(drone, prop, 4)
   line(drone, avion, 1)
@@ -67,9 +74,24 @@ export function sampleData(): BomData {
 
   data.settings.topAssemblyId = drone
 
+  // Motors bought twice before, from two different suppliers, to show price history.
   data.orders.push(
     {
-      id: uid(), number: 'PO-0001', supplierId: tmotor, status: 'received', currency: 'USD', fxToIls: 3.68,
+      id: uid(), number: 'PO-0001', supplierId: tmotor, status: 'received', currency: 'USD', fxToIls: 3.75,
+      orderDate: d(-210), expectedDate: d(-190), receivedDate: d(-188), shipping: 25, invoiceNumber: 'TM-80412', invoiceTotal: 313,
+      notes: 'Prototype batch', files: [],
+      lines: [{ id: uid(), partId: motor, qty: 4, unitPrice: 72, qtyReceived: 4 }],
+    },
+    {
+      id: uid(), number: 'PO-0002', supplierId: getfpv, status: 'received', currency: 'USD', fxToIls: 3.72,
+      orderDate: d(-120), expectedDate: d(-110), receivedDate: d(-108), shipping: 18, invoiceNumber: 'GF-55102', invoiceTotal: 354,
+      notes: 'T-Motor was out of stock', files: [],
+      lines: [{ id: uid(), partId: motor, qty: 4, unitPrice: 84, qtyReceived: 4 }],
+    },
+  )
+  data.orders.push(
+    {
+      id: uid(), number: 'PO-0003', supplierId: tmotor, status: 'received', currency: 'USD', fxToIls: 3.68,
       orderDate: d(-40), expectedDate: d(-20), receivedDate: d(-18), shipping: 60, invoiceNumber: 'TM-88213', invoiceTotal: 1013.6,
       notes: '', files: [],
       lines: [
@@ -78,7 +100,7 @@ export function sampleData(): BomData {
       ],
     },
     {
-      id: uid(), number: 'PO-0002', supplierId: holy, status: 'shipped', currency: 'USD', fxToIls: 3.7,
+      id: uid(), number: 'PO-0004', supplierId: holy, status: 'shipped', currency: 'USD', fxToIls: 3.7,
       orderDate: d(-12), expectedDate: d(-2), receivedDate: '', shipping: 35, invoiceNumber: '', invoiceTotal: null, notes: 'DHL tracking 1234567890', files: [],
       lines: [
         { id: uid(), partId: fc, qty: 3, unitPrice: 229, qtyReceived: 0 },
@@ -86,7 +108,7 @@ export function sampleData(): BomData {
       ],
     },
     {
-      id: uid(), number: 'PO-0003', supplierId: cnc, status: 'ordered', currency: 'ILS', fxToIls: 1,
+      id: uid(), number: 'PO-0005', supplierId: cnc, status: 'ordered', currency: 'ILS', fxToIls: 1,
       orderDate: d(-5), expectedDate: d(9), receivedDate: '', shipping: 0, invoiceNumber: '', invoiceTotal: null, notes: 'Rev B drawings sent', files: [],
       lines: [
         { id: uid(), partId: plate, qty: 6, unitPrice: 170, qtyReceived: 0 },
@@ -94,7 +116,7 @@ export function sampleData(): BomData {
       ],
     },
     {
-      id: uid(), number: 'PO-0004', supplierId: tmotor, status: 'draft', currency: 'USD', fxToIls: 3.7,
+      id: uid(), number: 'PO-0006', supplierId: tmotor, status: 'draft', currency: 'USD', fxToIls: 3.7,
       orderDate: '', expectedDate: '', receivedDate: '', shipping: 0, invoiceNumber: '', invoiceTotal: null, notes: '', files: [],
       lines: [{ id: uid(), partId: esc, qty: 16, unitPrice: 42, qtyReceived: 0 }],
     },

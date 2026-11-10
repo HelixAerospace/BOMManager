@@ -2,7 +2,7 @@ import { Building2, Plus } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useMoney } from '../lib/derived'
 import { useNav } from '../lib/nav'
-import { fmtMoney, isOpen, orderValueIls } from '../lib/calc'
+import { fmtMoney, isOpen, orderValueIls, partHasSupplier } from '../lib/calc'
 import { uid } from '../lib/types'
 import { Empty, PageHeader } from '../components/ui'
 
@@ -34,7 +34,7 @@ export default function SuppliersScreen() {
                     <tr key={s.id} className="clickable" onClick={() => nav.openSupplier(s.id)}>
                       <td className="font-medium">{s.name}</td>
                       <td className="text-ink-subtle">{s.currency}</td>
-                      <td className="num">{data.parts.filter((p) => p.supplierId === s.id).length}</td>
+                      <td className="num">{data.parts.filter((p) => partHasSupplier(p, s.id)).length}</td>
                       <td className="num">{orders.filter(isOpen).length || ''}</td>
                       <td className="num">{spent ? money(spent) : ''}</td>
                       <td className="text-ink-subtle">{s.email || s.phone || s.website.replace(/^https?:\/\//, '')}</td>

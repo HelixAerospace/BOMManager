@@ -3,7 +3,7 @@ import { Boxes, Plus } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useNav } from '../lib/nav'
 import { displayCurrencyOf, useDerived, useMoney } from '../lib/derived'
-import { fmtMoney, fmtNum, fmtWeight, isPacked, nextPn, stockState, toIls } from '../lib/calc'
+import { fmtMoney, fmtNum, fmtWeight, isPacked, nextPn, sourcesOf, stockState, toIls } from '../lib/calc'
 import { type BomData, type MakeBuy, type Part, uid } from '../lib/types'
 import { Empty, FilterTabs, MakeBuyChip, PageHeader, SearchBox, StockChip } from '../components/ui'
 
@@ -83,7 +83,7 @@ export default function PartsScreen() {
                       <td className="max-w-xs truncate">{p.name || <span className="text-ink-subtle">Unnamed</span>}</td>
                       <td className="text-ink-subtle">{p.rev}</td>
                       <td>{isAsm ? <span className="text-xs text-ink-subtle">Assembly</span> : <MakeBuyChip v={p.makeBuy} />}</td>
-                      <td className="whitespace-nowrap text-ink-subtle">{idx.supplierById.get(p.supplierId ?? '')?.name ?? ''}</td>
+                      <td className="whitespace-nowrap text-ink-subtle">{idx.supplierById.get(p.supplierId ?? '')?.name ?? ''}{sourcesOf(p).length > 1 && <span className="ml-1 text-xs" title={sourcesOf(p).map((x) => idx.supplierById.get(x.supplierId ?? '')?.name).filter(Boolean).join(', ')}>+{sourcesOf(p).length - 1}</span>}</td>
                       <td className="num text-ink-subtle">{isPacked(p) && p.packPrice != null ? <span title={`${fmtMoney(p.plannedCost, p.currency)} per piece`}>{fmtMoney(p.packPrice, p.currency)} / {fmtNum(p.packQty!)}</span> : p.plannedCost ? fmtMoney(p.plannedCost, p.currency) : ''}</td>
                       <td className="num">{planned ? money(planned) : ''}</td>
                       <td className="num">

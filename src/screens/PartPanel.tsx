@@ -5,6 +5,7 @@ import { useNav } from '../lib/nav'
 import { useDerived, useMoney } from '../lib/derived'
 import { fmtMoney, fmtNum, fmtWeight, nextPn, stockState, toIls } from '../lib/calc'
 import { type Part, uid } from '../lib/types'
+import { SuppliersEditor, PriceHistory } from './PartSourcing'
 import { Attachments, Field, FilterTabs, MakeBuyChip, NumInput, OrderStatusChip, SidePanel, StockChip } from '../components/ui'
 
 export const CURRENCIES = ['ILS', 'USD', 'EUR', 'CNY', 'GBP']
@@ -108,7 +109,7 @@ export default function PartPanel({ id }: { id: string }) {
         </div>
       </Section>
 
-      <Section title="Cost & sourcing">
+      <Section title="Cost">
         <div className="grid grid-cols-6 gap-3">
           {!isAsm && (
             <div className="col-span-6">
@@ -146,22 +147,14 @@ export default function PartPanel({ id }: { id: string }) {
             {packMode && !isAsm && p.packQty ? <>= <b className="text-ink">{fmtMoney(p.plannedCost, p.currency)}</b> per piece</> : null}
             {p.currency !== dispCur && p.plannedCost ? <div className="text-xs text-ink-subtle">≈ {money(toIls(data, p.plannedCost, p.currency))}{packMode ? ' per piece' : ''}</div> : null}
           </div>
-          <Field label="Supplier" className="col-span-3">
-            <select className="input" value={p.supplierId ?? ''} onChange={(e) => set('supplierId', e.target.value || null)}>
-              <option value="">—</option>
-              {data.suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-          </Field>
-          <Field label="Supplier part number" className="col-span-2"><input className="input" value={p.supplierPn} onChange={(e) => set('supplierPn', e.target.value)} /></Field>
-          <Field label="Lead time (days)"><NumInput value={p.leadTimeDays} min={0} onChange={(v) => set('leadTimeDays', v)} /></Field>
-          <Field label="Product link" className="col-span-6">
-            <div className="flex gap-2">
-              <input className="input" value={p.url} placeholder="https://" onChange={(e) => set('url', e.target.value)} />
-              {/^https?:\/\//.test(p.url) && <a className="btn" href={p.url} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" /></a>}
-            </div>
-          </Field>
         </div>
       </Section>
+
+      {!isAsm && (
+        <Section title="Suppliers">
+          <SuppliersEditor part={p} />
+        </Section>
+      )}
 
       {!isAsm && (
         <Section title="Stock & spares">
@@ -208,21 +201,9 @@ export default function PartPanel({ id }: { id: string }) {
         </Section>
       )}
 
-      {orderLines.length > 0 && (
-        <Section title="Order history">
-          <table className="w-full text-sm">
-            <tbody>
-              {orderLines.map(({ o, l }) => (
-                <tr key={l.id} className="cursor-pointer border-b border-hairline hover:bg-alt" onClick={() => { nav.openPart(null); nav.openOrder(o.id) }}>
-                  <td className="py-1.5 font-mono text-xs">{o.number}</td>
-                  <td className="text-ink-subtle">{idx.supplierById.get(o.supplierId ?? '')?.name}</td>
-                  <td className="text-ink-subtle">{o.orderDate}</td>
-                  <td className="num">{fmtNum(l.qty)} × {fmtMoney(l.unitPrice, o.currency)}</td>
-                  <td className="pl-3"><OrderStatusChip status={o.status} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {!isAsm && (
+        <Section title="Price history">
+          <PriceHistory part={p} />
         </Section>
       )}
 

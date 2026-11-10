@@ -1,4 +1,4 @@
-import type { BomData, ID, Order, Part } from './types'
+import type { BomData, ID, Order, Part, PartSource } from './types'
 import { today } from './types'
 
 export function toIls(data: BomData, amount: number, currency: string, rate?: number) {
@@ -15,6 +15,16 @@ export const fmtMoney = (v: number | null | undefined, cur = 'ILS') => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: cur, minimumFractionDigits: digits ? 2 : 0, maximumFractionDigits: digits }).format(v)
   } catch {
     return `${v.toFixed(2)} ${cur}`
+  }
+}
+/** Unit prices keep their cents (4 decimals below 1). */
+export const fmtPrice = (v: number | null | undefined, cur = 'ILS') => {
+  if (v == null || Number.isNaN(v)) return '—'
+  const d = Math.abs(v) < 1 && v !== 0 ? 4 : 2
+  try {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: cur, minimumFractionDigits: 2, maximumFractionDigits: d }).format(v)
+  } catch {
+    return `${v.toFixed(d)} ${cur}`
   }
 }
 export const fmtNum = (v: number) => new Intl.NumberFormat('en-US', { maximumFractionDigits: 3 }).format(v)
@@ -265,3 +275,63 @@ export function fmtWeight(g: number | null | undefined) {
 export const isPacked = (p: Part) => !!p.packQty && p.packQty > 1
 /** Round a quantity of pieces up to whole packs. */
 export const roundToPacks = (p: Part, pieces: number) => (isPacked(p) ? Math.ceil(pieces / p.packQty!) * p.packQty! : Math.ceil(pieces))
+
+// ---------- suppliers per part ----------
+/** The part's sources; older data without a list gets one built from the single supplier fields. */
+export function sourcesOf(p: Part): PartSource[] {
+  if (p.sources && p.sources.length) return p.sources
+  if (!p.supplierId && !p.supplierPn && !p.url) return []
+  return [{ id: `legacy-${p.id}`, supplierId: p.supplierId, supplierPn: p.supplierPn, url: p.url, leadTimeDays: p.leadTimeDays, notes: '' }]
+}
+
+/** Copies the preferred source into the part's single-supplier fields (used by build check, orders, exports). */
+export function syncPreferred(p: Part) {
+  const list = p.sources ?? []
+  const pref = list.find((s) => s.supplierId && s.supplierId === p.supplierId) ?? list[0]
+  p.supplierId = pref?.supplierId ?? null
+  p.supplierPn = pref?.supplierPn ?? ''
+  p.url = pref?.url ?? ''
+  p.leadTimeDays = pref?.leadTimeDays ?? null
+}
+
+export const partHasSupplier = (p: Part, supplierId: ID) => sourcesOf(p).some((s) => s.supplierId === supplierId) || p.supplierId === supplierId
+
+// ---------- price history ----------
+export interface PricePoint {
+  date: string // order date (or received date if no order date)
+  orderId: ID
+  orderNumber: string
+  supplierId: ID | null
+  status: Order['status']
+  qty: number
+  unitPrice: number // per piece, in order currency
+  currency: string
+  unitIls: number // per piece, converted at the order's rate
+  landedIls: number // per piece incl. share of shipping/fees
+}
+
+/** Every time the part was ordered (drafts and cancelled orders excluded), oldest first. */
+export function priceHistory(data: BomData, partId: ID): PricePoint[] {
+  const out: PricePoint[] = []
+  for (const o of data.orders) {
+    if (o.status === 'draft' || o.status === 'cancelled') continue
+    const goods = o.lines.reduce((s, l) => s + l.qty * l.unitPrice, 0)
+    const shipFactor = goods > 0 ? 1 + (o.shipping || 0) / goods : 1
+    const rate = o.fxToIls || data.settings.fx[o.currency] || 1
+    for (const l of o.lines) {
+      if (l.partId !== partId) continue
+      out.push({
+        date: o.orderDate || o.receivedDate || '',
+        orderId: o.id, orderNumber: o.number, supplierId: o.supplierId, status: o.status, qty: l.qty,
+        unitPrice: l.unitPrice, currency: o.currency, unitIls: l.unitPrice * rate, landedIls: l.unitPrice * shipFactor * rate,
+      })
+    }
+  }
+  return out.sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999') || a.orderNumber.localeCompare(b.orderNumber))
+}
+
+/** Last price paid for a part from one supplier, in that order's currency (per piece). */
+export function lastPriceFrom(data: BomData, partId: ID, supplierId: ID | null) {
+  const h = priceHistory(data, partId).filter((p) => p.supplierId === supplierId)
+  return h.length ? h[h.length - 1] : null
+}

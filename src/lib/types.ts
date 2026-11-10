@@ -20,10 +20,11 @@ export interface Part {
   packPrice?: number | null // price of one pack, when the part is bought in packs (e.g. 100 screws)
   packQty?: number | null // pieces per pack
   weight?: number | null // grams per unit; for assemblies, extra weight on top of the children (glue, wiring…)
-  supplierId: ID | null
+  supplierId: ID | null // preferred supplier (mirrors the preferred entry in sources)
   supplierPn: string
   url: string
   leadTimeDays: number | null
+  sources?: PartSource[] // every supplier this part can be bought from
   onHand: number
   location: string
   minStock: number // reorder point
@@ -31,6 +32,16 @@ export interface Part {
   notes: string
   files: string[] // paths relative to the data folder
   createdAt: string
+}
+
+/** One place a part can be bought. A part can have several; part.supplierId is the preferred one. */
+export interface PartSource {
+  id: ID
+  supplierId: ID | null
+  supplierPn: string
+  url: string
+  leadTimeDays: number | null
+  notes: string
 }
 
 export interface BomLine {

@@ -1,7 +1,7 @@
 import { Plus, Trash2 } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useNav } from '../lib/nav'
-import { fmtMoney, isLate } from '../lib/calc'
+import { fmtMoney, isLate, partHasSupplier, syncPreferred } from '../lib/calc'
 import type { Supplier } from '../lib/types'
 import { Field, OrderStatusChip, SidePanel } from '../components/ui'
 import { CURRENCIES, Section } from './PartPanel'
@@ -13,14 +13,18 @@ export default function SupplierPanel({ id }: { id: string }) {
   const s = data.suppliers.find((x) => x.id === id)
   if (!s) return null
   const set = <K extends keyof Supplier>(k: K, v: Supplier[K]) => update((d) => void (d.suppliers.find((x) => x.id === id)![k] = v))
-  const parts = data.parts.filter((p) => p.supplierId === id)
+  const parts = data.parts.filter((p) => partHasSupplier(p, id))
   const orders = data.orders.filter((o) => o.supplierId === id).sort((a, b) => b.number.localeCompare(a.number))
   const remove = () => {
     if (orders.length) return alert('This supplier has orders. Delete or reassign them first.')
     if (!confirm(`Delete ${s.name}?`)) return
     update((d) => {
       d.suppliers = d.suppliers.filter((x) => x.id !== id)
-      d.parts.forEach((p) => { if (p.supplierId === id) p.supplierId = null })
+      d.parts.forEach((p) => {
+        if (p.sources) p.sources = p.sources.filter((x) => x.supplierId !== id)
+        if (p.supplierId === id) p.supplierId = p.sources?.[0]?.supplierId ?? null
+        syncPreferred(p)
+      })
     })
     nav.openSupplier(null)
     void saveIfDirty()
