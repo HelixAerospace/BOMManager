@@ -36,17 +36,17 @@ export function sampleData(): BomData {
   const prop = part('ASM-00003', 'Propulsion set (per arm)', 'ASM', 'make', 0, 'ILS', null, 0)
   const avion = part('ASM-00004', 'Avionics stack', 'ASM', 'make', 0, 'ILS', null, 0)
 
-  const plate = part('MEC-00001', 'Center plate, carbon 3 mm', 'MEC', 'make', 180, 'ILS', cnc, 6, { leadTimeDays: 14, sparesTarget: 2, rev: 'B', weight: 38 })
-  const arm = part('MEC-00002', 'Arm tube, carbon 20 mm', 'MEC', 'make', 95, 'ILS', cnc, 14, { leadTimeDays: 14, sparesTarget: 4, weight: 42 })
-  const clamp = part('MEC-00003', 'Arm clamp, Al 6061', 'MEC', 'make', 60, 'ILS', cnc, 10, { leadTimeDays: 10, sparesTarget: 4, weight: 9.5 })
-  const motor = part('PUR-00001', 'Motor MN3110 KV700', 'PUR', 'buy', 79.9, 'USD', tmotor, 9, { leadTimeDays: 21, sparesTarget: 2, supplierPn: 'MN3110-700', weight: 98 })
-  const propel = part('PUR-00002', 'Propeller 12x4 CF (pair)', 'PUR', 'buy', 28, 'USD', tmotor, 30, { sparesTarget: 8, minStock: 10, weight: 22 })
-  const esc = part('ELE-00001', 'ESC 40A', 'ELE', 'buy', 42, 'USD', tmotor, 4, { leadTimeDays: 21, sparesTarget: 2, weight: 28 })
-  const fc = part('ELE-00002', 'Flight controller Pixhawk 6C', 'ELE', 'buy', 235, 'USD', holy, 2, { leadTimeDays: 14, sparesTarget: 1, weight: 59 })
-  const gps = part('ELE-00003', 'GPS M10', 'ELE', 'buy', 45, 'USD', holy, 3, { sparesTarget: 1, weight: 20 })
+  const plate = part('MEC-00001', 'Center plate, carbon 3 mm', 'MEC', 'make', 180, 'ILS', cnc, 6, { leadTimeDays: 14, sparesTarget: 2, rev: 'B', weightSource: 'cad', weight: 38 })
+  const arm = part('MEC-00002', 'Arm tube, carbon 20 mm', 'MEC', 'make', 95, 'ILS', cnc, 14, { leadTimeDays: 14, sparesTarget: 4, weightSource: 'cad', weight: 42 })
+  const clamp = part('MEC-00003', 'Arm clamp, Al 6061', 'MEC', 'make', 60, 'ILS', cnc, 10, { leadTimeDays: 10, sparesTarget: 4, weightSource: 'cad', weight: 9.5 })
+  const motor = part('PUR-00001', 'Motor MN3110 KV700', 'PUR', 'buy', 79.9, 'USD', tmotor, 9, { leadTimeDays: 21, sparesTarget: 2, supplierPn: 'MN3110-700', weightSource: 'supplier', weight: 98 })
+  const propel = part('PUR-00002', 'Propeller 12x4 CF (pair)', 'PUR', 'buy', 28, 'USD', tmotor, 30, { sparesTarget: 8, minStock: 10, weightSource: 'measured', weight: 22 })
+  const esc = part('ELE-00001', 'ESC 40A', 'ELE', 'buy', 42, 'USD', tmotor, 4, { leadTimeDays: 21, sparesTarget: 2, weightSource: 'supplier', weight: 28 })
+  const fc = part('ELE-00002', 'Flight controller Pixhawk 6C', 'ELE', 'buy', 235, 'USD', holy, 2, { leadTimeDays: 14, sparesTarget: 1, weightSource: 'measured', weight: 59 })
+  const gps = part('ELE-00003', 'GPS M10', 'ELE', 'buy', 45, 'USD', holy, 3, { sparesTarget: 1, weightSource: 'supplier', weight: 20 })
   const pdb = part('ELE-00004', 'Power distribution board', 'ELE', 'buy', 18, 'USD', digikey, 6, { weight: 12 })
-  const xt60 = part('ELE-00005', 'XT60 connector pair', 'ELE', 'buy', 1.2, 'USD', digikey, 40, { minStock: 20, weight: 3.5 })
-  const m3 = part('FAS-00001', 'Screw M3x10 SHCS', 'FAS', 'buy', 0.095, 'USD', mcm, 100, { minStock: 50, packPrice: 9.5, packQty: 100, supplierPn: '91290A115', weight: 0.8 })
+  const xt60 = part('ELE-00005', 'XT60 connector pair', 'ELE', 'buy', 1.2, 'USD', digikey, 40, { minStock: 20, weightSource: 'supplier', weight: 3.5 })
+  const m3 = part('FAS-00001', 'Screw M3x10 SHCS', 'FAS', 'buy', 0.095, 'USD', mcm, 100, { minStock: 50, packPrice: 9.5, packQty: 100, supplierPn: '91290A115', weightSource: 'supplier', weight: 0.8 })
   const tape = part('CON-00001', 'Threadlocker 243', 'CON', 'buy', 35, 'ILS', null, 1, { unit: 'bottle', minStock: 1 })
 
   const motorPart = data.parts.find((p) => p.id === motor)!
@@ -60,7 +60,7 @@ export function sampleData(): BomData {
   line(drone, avion, 1)
   line(drone, m3, 48)
   line(drone, tape, 0.05)
-  data.parts.find((p) => p.id === frame)!.weight = 15 // wiring and glue on the frame
+  Object.assign(data.parts.find((p) => p.id === frame)!, { weight: 15, weightSource: 'cad' }) // wiring and glue on the frame
   line(frame, plate, 2)
   line(frame, arm, 4)
   line(frame, clamp, 4)

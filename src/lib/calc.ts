@@ -1,4 +1,4 @@
-import type { BomData, ID, Order, Part, PartSource } from './types'
+import type { BomData, ID, Order, Part, PartSource, WeightSource } from './types'
 import { today } from './types'
 
 export function toIls(data: BomData, amount: number, currency: string, rate?: number) {
@@ -334,4 +334,29 @@ export function priceHistory(data: BomData, partId: ID): PricePoint[] {
 export function lastPriceFrom(data: BomData, partId: ID, supplierId: ID | null) {
   const h = priceHistory(data, partId).filter((p) => p.supplierId === supplierId)
   return h.length ? h[h.length - 1] : null
+}
+
+// ---------- weight sources ----------
+export type WeightBucket = WeightSource | 'unset'
+export interface WeightBreakdown {
+  grams: Record<WeightBucket, number> // grams in one top-level unit, by where the weight came from
+  total: number
+  missingParts: number // distinct parts below the assembly with no weight entered
+}
+
+/** Splits an assembly's weight by source: CAD estimate, supplier data, measured, or source not recorded. */
+export function weightBySource(idx: Idx, topId: ID): WeightBreakdown {
+  const grams: Record<WeightBucket, number> = { cad: 0, supplier: 0, measured: 0, unset: 0 }
+  const missing = new Set<ID>()
+  const walk = (id: ID, mult: number, depth: number) => {
+    const p = idx.partById.get(id)
+    if (!p || depth > 50) return
+    const kids = idx.children.get(id) ?? []
+    if (p.weight != null) grams[p.weightSource ?? 'unset'] += p.weight * mult
+    else if (!kids.length) missing.add(id)
+    for (const k of kids) walk(k.childId, mult * k.qty, depth + 1)
+  }
+  walk(topId, 1, 0)
+  const total = grams.cad + grams.supplier + grams.measured + grams.unset
+  return { grams, total, missingParts: missing.size }
 }

@@ -3,8 +3,9 @@ import type { ReactNode } from 'react'
 import { useStore } from '../lib/store'
 import { useNav } from '../lib/nav'
 import { useDerived, useMoney } from '../lib/derived'
-import { fmtMoney, fmtNum, fmtWeight, nextPn, stockState, toIls } from '../lib/calc'
-import { type Part, uid } from '../lib/types'
+import { fmtMoney, fmtNum, fmtWeight, nextPn, stockState, toIls, weightBySource } from '../lib/calc'
+import { WeightSourceStats } from '../components/weight'
+import { type Part, type WeightSource, WEIGHT_SOURCES, uid } from '../lib/types'
 import { SuppliersEditor, PriceHistory } from './PartSourcing'
 import { Attachments, Field, FilterTabs, MakeBuyChip, NumInput, OrderStatusChip, SidePanel, StockChip } from '../components/ui'
 
@@ -103,9 +104,18 @@ export default function PartPanel({ id }: { id: string }) {
           </Field>
           <Field label="Unit" className="col-span-2"><input className="input" value={p.unit} onChange={(e) => set('unit', e.target.value)} /></Field>
           <Field label={isAsm ? 'Extra weight (g), e.g. glue, wiring' : 'Weight per unit (g)'} className="col-span-2"><NumInput value={p.weight ?? null} min={0} placeholder="grams" onChange={(v) => set('weight', v)} /></Field>
-          <div className="col-span-4 self-end pb-2 text-sm text-ink-muted">
-            {isAsm ? <>Total {fmtWeight(w?.grams)} per unit{w && w.missing > 0 && <span className="text-caution"> · {w.missing} part{w.missing > 1 ? 's' : ''} below have no weight</span>}</> : p.weight == null ? <span className="text-caution">No weight yet</span> : null}
+          <div className="col-span-4">
+            <span className="label">{isAsm ? 'Source of extra weight' : 'Weight source'}</span>
+            <FilterTabs
+              value={p.weightSource ?? ''}
+              onChange={(v) => set('weightSource', v === p.weightSource ? null : (v as WeightSource))}
+              options={WEIGHT_SOURCES.map((x) => ({ value: x.value, label: x.label }))}
+            />
           </div>
+          <div className="col-span-6 text-sm text-ink-muted">
+            {isAsm ? <>Total {fmtWeight(w?.grams)} per unit{w && w.missing > 0 && <span className="text-caution"> · {w.missing} part{w.missing > 1 ? 's' : ''} below have no weight</span>}</> : p.weight == null ? <span className="text-caution">No weight yet</span> : !p.weightSource ? <span className="text-ink-subtle">Choose where this weight comes from.</span> : null}
+          </div>
+          {isAsm && w && w.grams > 0 && <div className="col-span-6 rounded-lg border border-hairline p-3"><WeightSourceStats b={weightBySource(idx, id)} compact /></div>}
         </div>
       </Section>
 

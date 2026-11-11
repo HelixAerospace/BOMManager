@@ -96,6 +96,7 @@ export function planImport(data: BomData, rows: ImportRow[], targetId: ID, defau
       plannedCost: r.cost ?? 0, currency: data.settings.displayCurrency || 'USD', supplierId: null, supplierPn: '', url: '', leadTimeDays: null,
       onHand: 0, location: '', minStock: 0, sparesTarget: 0, notes: r.vendor ? `Vendor (from Inventor): ${r.vendor}` : '', files: [], createdAt: new Date().toISOString(),
       weight: isAsm ? null : r.mass,
+      weightSource: !isAsm && r.mass != null ? 'cad' : null,
     }
     byPn.set(r.pn.toLowerCase(), p)
     newParts.push(p)
@@ -112,7 +113,8 @@ export function planImport(data: BomData, rows: ImportRow[], targetId: ID, defau
       if (r.rev && r.rev !== child.rev) updates.push({ part: child, field: 'rev', from: child.rev, to: r.rev })
       if (r.desc && r.desc !== child.name) updates.push({ part: child, field: 'name', from: child.name, to: r.desc })
       // Mass from Inventor only updates parts (not assemblies, whose weight is rolled up from their children).
-      if (r.mass != null && !hasKids.has(r.item) && r.mass !== child.weight)
+      // A weight you measured or took from the supplier is never overwritten by the CAD mass.
+      if (r.mass != null && !hasKids.has(r.item) && r.mass !== child.weight && (child.weightSource ?? 'cad') === 'cad')
         updates.push({ part: child, field: 'weight', from: child.weight == null ? 'none' : `${child.weight} g`, to: `${r.mass} g`, value: r.mass })
     }
     const pItem = parentItem(r.item)
@@ -144,7 +146,10 @@ export function planImport(data: BomData, rows: ImportRow[], targetId: ID, defau
     for (const u of updates) {
       const p = d.parts.find((x) => x.id === u.part.id)
       if (!p) continue
-      if (u.field === 'weight') p.weight = u.value ?? null
+      if (u.field === 'weight') {
+        p.weight = u.value ?? null
+        p.weightSource = 'cad'
+      }
       else p[u.field] = u.to
     }
     for (const [parentId, want] of desired) {

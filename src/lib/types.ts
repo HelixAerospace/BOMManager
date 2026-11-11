@@ -2,6 +2,14 @@ export type ID = string
 
 export type MakeBuy = 'make' | 'buy'
 
+/** How a weight was obtained, from least to most trustworthy. */
+export type WeightSource = 'cad' | 'supplier' | 'measured'
+export const WEIGHT_SOURCES: { value: WeightSource; label: string; short: string }[] = [
+  { value: 'cad', label: 'CAD estimate', short: 'CAD' },
+  { value: 'supplier', label: 'Per supplier', short: 'Supplier' },
+  { value: 'measured', label: 'As measured', short: 'Measured' },
+]
+
 export interface Category {
   prefix: string // e.g. "MEC"
   name: string // e.g. "Mechanical (custom)"
@@ -20,6 +28,7 @@ export interface Part {
   packPrice?: number | null // price of one pack, when the part is bought in packs (e.g. 100 screws)
   packQty?: number | null // pieces per pack
   weight?: number | null // grams per unit; for assemblies, extra weight on top of the children (glue, wiring…)
+  weightSource?: WeightSource | null // where the weight number comes from
   supplierId: ID | null // preferred supplier (mirrors the preferred entry in sources)
   supplierPn: string
   url: string

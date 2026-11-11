@@ -30,7 +30,7 @@ export default function SettingsScreen() {
   const exportParts = () => {
     const rows = data.parts.map((p) => ({
       'Part number': p.pn, Name: p.name, Rev: p.rev, Category: p.category, Type: idx.children.has(p.id) ? 'Assembly' : p.makeBuy === 'make' ? 'Custom' : 'Off-the-shelf',
-      'Preferred supplier': idx.supplierById.get(p.supplierId ?? '')?.name ?? '', 'Supplier PN': p.supplierPn, 'All suppliers': sourcesOf(p).map((x) => `${idx.supplierById.get(x.supplierId ?? '')?.name ?? '?'}${x.supplierPn ? ` (${x.supplierPn})` : ''}`).join('; '), 'Planned cost per piece': Math.round(p.plannedCost * 10000) / 10000, 'Pack price': p.packPrice ?? '', 'Pieces per pack': p.packQty ?? '', Currency: p.currency, 'Weight (g)': p.weight ?? '', 'Weight rolled up (g)': Math.round((weights.get(p.id)?.grams ?? 0) * 10) / 10,
+      'Preferred supplier': idx.supplierById.get(p.supplierId ?? '')?.name ?? '', 'Supplier PN': p.supplierPn, 'All suppliers': sourcesOf(p).map((x) => `${idx.supplierById.get(x.supplierId ?? '')?.name ?? '?'}${x.supplierPn ? ` (${x.supplierPn})` : ''}`).join('; '), 'Planned cost per piece': Math.round(p.plannedCost * 10000) / 10000, 'Pack price': p.packPrice ?? '', 'Pieces per pack': p.packQty ?? '', Currency: p.currency, 'Weight (g)': p.weight ?? '', 'Weight source': p.weightSource ?? '', 'Weight rolled up (g)': Math.round((weights.get(p.id)?.grams ?? 0) * 10) / 10,
       [`Planned (${dc}, rolled up)`]: Math.round(((costs.get(p.id)?.planned ?? 0) / dRate) * 10000) / 10000, [`Actual (${dc})`]: actual.get(p.id) ? Math.round((actual.get(p.id)!.unitIls / dRate) * 10000) / 10000 : '',
       'On hand': p.onHand, Location: p.location, 'Min stock': p.minStock, 'Spares target': p.sparesTarget, URL: p.url, Notes: p.notes,
     }))
@@ -180,7 +180,7 @@ function InventorImport() {
     <Card className="p-5">
       <h2 className="mb-1 text-[15px] font-semibold leading-6">Import BOM from Inventor</h2>
       <p className="mb-3 text-sm text-ink-subtle">
-        In Inventor: <i>Assemble › Bill of Materials › Export</i>, choose the <b>Structured</b> view (all levels) and save as <b>.csv</b>. Parts are matched by <b>Part Number</b> (new ones take their category from the prefix, e.g. MEC-); an <i>Estimated Cost</i> column is read in your display currency; add the <i>Mass</i> column to fill in part weights; you’ll see the changes before anything is applied. Lines you added by hand (glue, cables…) are kept.
+        In Inventor: <i>Assemble › Bill of Materials › Export</i>, choose the <b>Structured</b> view (all levels) and save as <b>.csv</b>. Parts are matched by <b>Part Number</b> (new ones take their category from the prefix, e.g. MEC-); an <i>Estimated Cost</i> column is read in your display currency; add the <i>Mass</i> column to fill in part weights (marked as CAD estimates; measured and supplier weights are never overwritten); you’ll see the changes before anything is applied. Lines you added by hand (glue, cables…) are kept.
       </p>
       <button className="btn" onClick={() => input.current?.click()}><FileUp className="h-4 w-4" /> Choose CSV file…</button>
       <input ref={input} type="file" accept=".csv,text/csv" hidden onChange={(e) => { onFile(e.target.files?.[0]); e.target.value = '' }} />

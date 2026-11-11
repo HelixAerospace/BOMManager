@@ -3,7 +3,8 @@ import { ChevronDown, ChevronRight, ListTree, Plus, ShoppingCart, Trash2, Chevro
 import { useStore } from '../lib/store'
 import { useNav } from '../lib/nav'
 import { useDerived, useMoney } from '../lib/derived'
-import { availability, buildCheck, createsCycle, fmtMoney, fmtNum, fmtWeight, nextPoNumber, roundToPacks } from '../lib/calc'
+import { availability, buildCheck, createsCycle, fmtMoney, fmtNum, fmtWeight, nextPoNumber, roundToPacks, weightBySource } from '../lib/calc'
+import { WeightSourceChip, WeightSourceStats } from '../components/weight'
 import { type ID, type Part, uid } from '../lib/types'
 import { AvailabilityChip, Empty, FilterTabs, MakeBuyChip, NumInput, PageHeader, PartPicker } from '../components/ui'
 import { newPart } from './Parts'
@@ -98,6 +99,7 @@ export default function BomScreen() {
   const topCost = costs.get(top.id)
   const topWeight = weights.get(top.id)
   const totalGrams = topWeight?.grams || 0
+  const srcBreakdown = weightBySource(idx, top.id)
 
   // Flatten the tree for rendering.
   type Row = { key: string; part: Part; lineId: ID | null; parentId: ID | null; qty: number; extQty: number; depth: number; hasKids: boolean }
@@ -156,6 +158,15 @@ export default function BomScreen() {
 
       {view !== 'build' ? (
         <div className="p-6 pt-3">
+          {view === 'weight' && (
+            <div className="mb-3 rounded-lg border border-hairline bg-surface p-4">
+              <div className="mb-3 flex items-baseline justify-between">
+                <span className="text-[15px] font-semibold leading-6">Where the weight figures come from</span>
+                <span className="text-sm text-ink-muted">total <b className="text-ink">{fmtWeight(srcBreakdown.total)}</b> per {top.name}</span>
+              </div>
+              <WeightSourceStats b={srcBreakdown} />
+            </div>
+          )}
           <div className="overflow-hidden rounded-lg border border-hairline bg-surface">
             <table className="grid-table">
               <thead>
@@ -230,7 +241,7 @@ export default function BomScreen() {
                         </td>
                         <td className="num text-ink-subtle">{isTop ? '' : fmtNum(r.extQty)}</td>
                         <td className="num">
-                          {r.hasKids ? fmtWeight(wt?.grams) : r.part.weight == null ? <span className="text-caution">not set</span> : fmtWeight(r.part.weight)}
+                          {r.hasKids ? fmtWeight(wt?.grams) : r.part.weight == null ? <span className="text-caution">not set</span> : <span className="inline-flex items-center gap-1.5 whitespace-nowrap"><WeightSourceChip s={r.part.weightSource} />{fmtWeight(r.part.weight)}</span>}
                           {r.hasKids && wt && wt.missing > 0 && <div className="text-xs text-caution">{wt.missing} not set</div>}
                         </td>
                         <td className="num font-medium">{fmtWeight((wt?.grams ?? 0) * r.extQty)}</td>

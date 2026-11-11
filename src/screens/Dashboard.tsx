@@ -3,7 +3,8 @@ import { AlertTriangle, ListTree, Truck, Warehouse } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useNav } from '../lib/nav'
 import { useDerived, useMoney } from '../lib/derived'
-import { buildCheck, fmtMoney, fmtWeight, isLate, isOpen, orderValueIls, stockState } from '../lib/calc'
+import { weightBySource, buildCheck, fmtMoney, fmtWeight, isLate, isOpen, orderValueIls, stockState } from '../lib/calc'
+import { WeightSourceStats } from '../components/weight'
 import { Card, Empty, Kpi, OrderStatusChip, PageHeader, StepBar } from '../components/ui'
 
 export default function Dashboard() {
@@ -43,6 +44,8 @@ export default function Dashboard() {
   }, [topId, idx, weights])
   const topWeight = topId ? weights.get(topId) : undefined
   const totalGrams = topWeight?.grams ?? 0
+  const srcBreakdown = useMemo(() => (topId ? weightBySource(idx, topId) : null), [idx, topId])
+  const measuredPct = srcBreakdown && srcBreakdown.total ? Math.round((srcBreakdown.grams.measured / srcBreakdown.total) * 100) : 0
 
   if (data.parts.length === 0)
     return (
@@ -78,7 +81,7 @@ export default function Dashboard() {
           <Kpi label="Can build now" value={bc ? bc.canBuild : '—'} sub={`from stock on hand, target ${units}`} tone={bc && bc.canBuild >= units ? 'green' : 'amber'} onClick={() => nav.go('bom')} />
           <Kpi label={`Parts short for ${units} units`} value={shortParts.length} sub="after open orders arrive" tone={shortParts.length ? 'red' : 'green'} onClick={() => nav.go('bom')} />
           <Kpi label="Open orders" value={open.length} sub={`${money(openValue)} on order`} onClick={() => nav.go('orders')} />
-          <Kpi label="Weight per unit" value={fmtWeight(totalGrams)} sub={topWeight && topWeight.missing > 0 ? `${topWeight.missing} part${topWeight.missing > 1 ? 's' : ''} without weight` : 'all parts weighed'} tone={topWeight && topWeight.missing > 0 ? 'amber' : undefined} onClick={() => nav.go('bom')} />
+          <Kpi label="Weight per unit" value={fmtWeight(totalGrams)} sub={<>{measuredPct}% measured{topWeight && topWeight.missing > 0 ? ` · ${topWeight.missing} part${topWeight.missing > 1 ? 's' : ''} without weight` : ''}</>} tone={topWeight && topWeight.missing > 0 ? 'amber' : undefined} onClick={() => nav.go('bom')} />
           <Kpi label="Overdue orders" value={late.length} sub={late.length ? 'past expected date' : 'all on time'} tone={late.length ? 'red' : 'green'} onClick={() => nav.go('orders')} />
         </div>
 
@@ -125,6 +128,7 @@ export default function Dashboard() {
                 <span className="text-[15px] font-semibold leading-6">Weight by subsystem</span>
                 <span className="text-sm text-ink-muted">total <b className="text-ink">{fmtWeight(totalGrams)}</b></span>
               </div>
+              {srcBreakdown && srcBreakdown.total > 0 && <div className="border-b border-hairline px-4 py-3"><WeightSourceStats b={srcBreakdown} compact /></div>}
               <div className="space-y-3 p-4">
                 {weightRows.map((s) => (
                   <button key={s.id} className="block w-full text-left" onClick={() => nav.openPart(s.id)}>
