@@ -10,9 +10,9 @@ export function toIls(data: BomData, amount: number, currency: string, rate?: nu
 export const fmtMoney = (v: number | null | undefined, cur = 'ILS') => {
   if (v == null || Number.isNaN(v)) return '—'
   try {
-    const a = Math.abs(v)
-    const digits = v === 0 || a >= 10 ? 0 : a < 1 ? 4 : 2 // small per-piece prices (e.g. screws) keep their precision
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: cur, minimumFractionDigits: digits ? 2 : 0, maximumFractionDigits: digits }).format(v)
+    // Always show cents; tiny per-piece prices (e.g. screws at $0.095) keep up to 4 decimals.
+    const max = v !== 0 && Math.abs(v) < 1 ? 4 : 2
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: cur, minimumFractionDigits: 2, maximumFractionDigits: max }).format(v)
   } catch {
     return `${v.toFixed(2)} ${cur}`
   }
