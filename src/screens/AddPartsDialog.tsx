@@ -122,8 +122,8 @@ export default function AddPartsDialog({ order, onClose }: { order: Order; onClo
                     <td className="num w-36" onClick={(e) => e.stopPropagation()}>
                       {on ? (
                         <div className="flex items-center justify-end gap-1">
-                          <NumInput className="input num h-8 w-20" value={picked.get(p.id)! / f2} min={0} onChange={(v) => setPicked((m) => new Map(m).set(p.id, v * f2))} />
-                          <span className="w-9 text-left text-xs text-ink-subtle">{f2 > 1 ? 'packs' : 'pcs'}</span>
+                          <NumInput className="input num h-8 w-20" value={picked.get(p.id)!} min={0} onChange={(v) => setPicked((m) => new Map(m).set(p.id, v))} />
+                          <span className="w-9 text-left text-xs text-ink-subtle">pcs</span>
                         </div>
                       ) : null}
                     </td>

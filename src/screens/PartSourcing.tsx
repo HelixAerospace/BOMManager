@@ -176,7 +176,7 @@ export function PriceHistory({ part }: { part: Part }) {
                 <td className="whitespace-nowrap">{h.date || <span className="text-ink-subtle">no date</span>}</td>
                 <td className="font-mono text-xs">{h.orderNumber}</td>
                 <td className="text-ink-muted">{supplierName(h.supplierId)}</td>
-                <td className="num">{isPacked(part) ? `${fmtNum(h.qty / part.packQty!)} packs` : fmtNum(h.qty)}</td>
+                <td className="num">{fmtNum(h.qty)}{isPacked(part) && <div className="text-xs text-ink-subtle">{fmtNum(h.qty / part.packQty!)} pack{h.qty / part.packQty! === 1 ? '' : 's'}</div>}</td>
                 <td className="num">{fmtPrice(h.unitPrice * (isPacked(part) ? part.packQty! : 1), h.currency)}{isPacked(part) ? '/pack' : ''}</td>
                 <td className="num font-medium" title="Price per piece including its share of shipping and fees">{money(h.landedIls)}</td>
                 <td><OrderStatusChip status={h.status} /></td>
