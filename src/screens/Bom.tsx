@@ -13,7 +13,7 @@ export default function BomScreen() {
   const { fmt: money, sym, cur: dispCur } = useMoney()
   const { data, update, notify } = useStore()
   const nav = useNav()
-  const { idx, costs, actual, weights, topAssemblies } = useDerived()
+  const { idx, costs, actual, weights, onOrder, topAssemblies } = useDerived()
   const assemblies = data.parts.filter((p) => idx.children.has(p.id) || p.category === 'ASM')
   const [sel, setSel] = useState<ID | undefined>(data.settings.topAssemblyId ?? topAssemblies[0]?.id)
   const topId = sel && idx.partById.has(sel) ? sel : topAssemblies[0]?.id ?? assemblies[0]?.id
@@ -168,8 +168,8 @@ export default function BomScreen() {
               <WeightSourceStats b={srcBreakdown} />
             </div>
           )}
-          <div className="overflow-hidden rounded-lg border border-hairline bg-surface">
-            <table className="grid-table">
+          <div className="overflow-x-auto rounded-lg border border-hairline bg-surface">
+            <table className="grid-table dense">
               <thead>
                 {view === 'tree' ? (
                   <tr>
@@ -179,9 +179,10 @@ export default function BomScreen() {
                     <th className="num">Total qty</th>
                     <th className="num">Unit cost ({sym})</th>
                     <th className="num">Ext. cost ({sym})</th>
-                    <th className="num">Actual unit ({sym})</th>
+                    <th className="num">Actual ({sym})</th>
                     <th className="num">On hand</th>
-                    <th>For {units} units</th>
+                    <th className="num" title="Ordered but not yet received (open orders)">Ordered</th>
+                    <th>{units} units</th>
                     <th className="w-16"></th>
                   </tr>
                 ) : (
@@ -224,9 +225,9 @@ export default function BomScreen() {
                         </td>
 {view === 'tree' ? (<>
                         <td>{r.hasKids ? <span className="text-xs text-ink-subtle">Assembly</span> : <MakeBuyChip v={r.part.makeBuy} />}</td>
-                        <td className="num w-24 min-w-24">
+                        <td className="num w-20">
                           {r.lineId ? (
-                            <NumInput className="cell-input num min-w-16" value={r.qty} min={0} onChange={(v) => update((d) => void (d.bom.find((l) => l.id === r.lineId)!.qty = v))} />
+                            <NumInput className="cell-input num w-14" value={r.qty} min={0} onChange={(v) => update((d) => void (d.bom.find((l) => l.id === r.lineId)!.qty = v))} />
                           ) : '—'}
                         </td>
                         <td className="num text-ink-subtle">{isTop ? '' : fmtNum(r.extQty)}</td>
@@ -234,11 +235,12 @@ export default function BomScreen() {
                         <td className="num font-medium">{isTop ? money(c?.planned) : money((c?.planned ?? 0) * r.qty)}</td>
                         <td className="num text-ink-subtle">{r.hasKids ? (c && c.actualCoverage > 0 ? money(c.actual) : '') : a ? <span title={`from ${a.orderNumber}`}>{money(a.unitIls)}</span> : ''}</td>
                         <td className="num">{r.hasKids ? '' : fmtNum(r.part.onHand)}</td>
+                        <td className="num text-ink-muted">{r.hasKids ? '' : onOrder.get(r.part.id) ? fmtNum(onOrder.get(r.part.id)!) : ''}</td>
                         <td>{!r.hasKids && av && <AvailabilityChip a={availability(av)} />}</td>
 </>) : (<>
-                        <td className="num w-24 min-w-24">
+                        <td className="num w-20">
                           {r.lineId ? (
-                            <NumInput className="cell-input num min-w-16" value={r.qty} min={0} onChange={(v) => update((d) => void (d.bom.find((l) => l.id === r.lineId)!.qty = v))} />
+                            <NumInput className="cell-input num w-14" value={r.qty} min={0} onChange={(v) => update((d) => void (d.bom.find((l) => l.id === r.lineId)!.qty = v))} />
                           ) : '—'}
                         </td>
                         <td className="num text-ink-subtle">{isTop ? '' : fmtNum(r.extQty)}</td>
@@ -269,7 +271,7 @@ export default function BomScreen() {
                       </tr>
                       {(addingTo === r.key || (isTop && !r.hasKids)) && (
                         <tr>
-                          <td colSpan={view === 'tree' ? 10 : 8} className="relative bg-alt">
+                          <td colSpan={view === 'tree' ? 11 : 8} className="relative bg-alt">
                             <TreeGuides trail={[...r.trail, !r.expanded]} expanded={false} />
                             <div className="relative flex items-center gap-2" style={{ paddingLeft: (r.depth + 1) * INDENT + 4 }}>
                               <div className="w-96"><PartPicker parts={data.parts.filter((p) => p.id !== r.part.id)} onPick={(p) => addChild(r.part.id, p)} placeholder={`Add part to ${r.part.name}…`} /></div>

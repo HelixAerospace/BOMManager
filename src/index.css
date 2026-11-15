@@ -149,3 +149,6 @@ table.grid-table th { @apply sticky top-0 z-10 whitespace-nowrap border-b border
 table.grid-table td { @apply border-b border-hairline px-3 py-2 align-middle; }
 table.grid-table tr:last-child td { @apply border-b-0; }
 table.grid-table tr.clickable:hover td { @apply cursor-pointer bg-alt; }
+/* Denser variant for wide tables (BOM). */
+table.grid-table.dense th, table.grid-table.dense td { @apply px-2; }
+table.grid-table.dense th:first-child, table.grid-table.dense td:first-child { @apply pl-3; }
