@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { AlertTriangle, CheckCircle2, Circle, Clock, FileText, Paperclip, Truck, Upload, X, XCircle, PackageCheck, PackageMinus, Save, Search } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Circle, Clock, FileText, Paperclip, Truck, Upload, X, XCircle, PackageCheck, PackageMinus, Save, Search, Link2, Copy } from 'lucide-react'
 import type { OrderStatus, Part } from '../lib/types'
 import type { Availability, StockState } from '../lib/calc'
 import { useStore } from '../lib/store'
@@ -280,55 +280,118 @@ export function PartPicker({ parts, onPick, placeholder = 'Add part… (type PN 
   )
 }
 
-/** Attachments list with drag-and-drop. Files are copied into the data folder. */
+/** Attachments: either a copy kept in the BOM folder (files/…), or a link to a file that already lives
+ *  in the chosen folder (paths starting with "/"), e.g. a STEP file next to the Inventor model. */
 export function Attachments({ files, group, onChange }: { files: string[]; group: string; onChange: (files: string[]) => void }) {
-  const { attach, openFile, demo } = useStore()
+  const { attach, openFile, demo, linkFiles, linkHandle, fileExists, rootName, notify } = useStore()
   const [over, setOver] = useState(false)
+  const [missing, setMissing] = useState<Set<string>>(new Set())
   const input = useRef<HTMLInputElement>(null)
-  const add = async (list: FileList | null) => {
-    if (!list) return
+  const key = files.join('|')
+
+  useEffect(() => {
+    let alive = true
+    ;(async () => {
+      const m = new Set<string>()
+      for (const f of files) if (!(await fileExists(f))) m.add(f)
+      if (alive) setMissing(m)
+    })()
+    return () => {
+      alive = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, fileExists])
+
+  const addPaths = (paths: string[]) => {
+    const fresh = paths.filter((p) => !files.includes(p))
+    if (fresh.length) onChange([...files, ...fresh])
+  }
+  const copyIn = async (list: File[]) => {
     const added: string[] = []
-    for (const f of Array.from(list)) {
+    for (const f of list) {
       const p = await attach(group, f)
       if (p) added.push(p)
     }
-    if (added.length) onChange([...files, ...added])
+    addPaths(added)
   }
+  // Dropped files already inside the chosen folder are linked; anything else is copied in.
+  const onDrop = async (e: React.DragEvent) => {
+    e.preventDefault()
+    setOver(false)
+    const items = Array.from(e.dataTransfer.items).filter((it) => it.kind === 'file')
+    const handles = await Promise.all(items.map((it) => ('getAsFileSystemHandle' in it ? (it as DataTransferItem & { getAsFileSystemHandle(): Promise<FileSystemHandle | null> }).getAsFileSystemHandle() : Promise.resolve(null))))
+    const files2 = items.map((it) => it.getAsFile())
+    const links: string[] = []
+    const copies: File[] = []
+    for (let i = 0; i < items.length; i++) {
+      const h = handles[i]
+      const link = h && h.kind === 'file' ? await linkHandle(h as FileSystemFileHandle) : null
+      if (link) links.push(link)
+      else if (files2[i]) copies.push(files2[i]!)
+    }
+    addPaths(links)
+    if (copies.length) await copyIn(copies)
+  }
+  const prettyLink = (p: string) => [rootName, ...p.split('/').filter(Boolean)].join(' › ')
+  const winPath = (p: string) => [rootName, ...p.split('/').filter(Boolean)].join('\\')
+
   return (
     <div>
       {files.length > 0 && (
         <ul className="mb-2 divide-y divide-hairline rounded-lg border border-hairline">
-          {files.map((f) => (
-            <li key={f} className="flex items-center justify-between gap-2 px-3 py-1.5 text-sm">
-              <button className="flex min-w-0 items-center gap-2 text-left hover:underline" onClick={() => openFile(f)}>
-                <FileText className="h-4 w-4 shrink-0 text-ink-subtle" />
-                <span className="truncate">{f.split('/').pop()}</span>
-              </button>
-              <button className="text-xs text-ink-subtle hover:text-warning" onClick={() => onChange(files.filter((x) => x !== f))} title="Remove link (file stays in the folder)">
-                Remove
-              </button>
-            </li>
-          ))}
+          {files.map((f) => {
+            const linked = f.startsWith('/')
+            const gone = missing.has(f)
+            return (
+              <li key={f} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
+                <div className="min-w-0">
+                  <button className="flex min-w-0 items-center gap-2 text-left hover:underline disabled:no-underline" disabled={gone} onClick={() => openFile(f)}>
+                    {linked ? <Link2 className="h-4 w-4 shrink-0 text-ink-subtle" /> : <FileText className="h-4 w-4 shrink-0 text-ink-subtle" />}
+                    <span className="truncate">{f.split('/').pop()}</span>
+                  </button>
+                  <div className="ml-6 flex flex-wrap items-center gap-1.5 text-xs text-ink-subtle">
+                    {linked ? <span className="truncate" title={prettyLink(f)}>Linked · {prettyLink(f)}</span> : <span>Copy in BOM folder</span>}
+                    {gone && <Chip color="warning" icon={<AlertTriangle className="h-3.5 w-3.5" />}>Missing</Chip>}
+                  </div>
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  {linked && (
+                    <button className="btn-icon h-7 w-7" title="Copy file path" aria-label="Copy file path" onClick={async () => { await navigator.clipboard.writeText(winPath(f)); notify('Path copied') }}>
+                      <Copy className="h-4 w-4" />
+                    </button>
+                  )}
+                  <button className="text-xs text-ink-subtle hover:text-warning" onClick={() => onChange(files.filter((x) => x !== f))} title={linked ? 'Remove link (the file is not touched)' : 'Remove from this list (the copy stays in the folder)'}>
+                    Remove
+                  </button>
+                </div>
+              </li>
+            )
+          })}
         </ul>
       )}
-      <div
-        onDragOver={(e) => {
-          e.preventDefault()
-          setOver(true)
-        }}
-        onDragLeave={() => setOver(false)}
-        onDrop={(e) => {
-          e.preventDefault()
-          setOver(false)
-          add(e.dataTransfer.files)
-        }}
-        onClick={() => input.current?.click()}
-        className={`flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed px-3 py-3 text-sm ${over ? 'border-control bg-alt' : 'border-control text-ink-subtle hover:bg-alt'}`}
-      >
-        {files.length ? <Paperclip className="h-4 w-4" /> : <Upload className="h-4 w-4" />}
-        {demo ? 'Attachments are disabled in demo mode' : 'Drop files here or click to attach (PDF, images, STEP…)'}
-      </div>
-      <input ref={input} type="file" multiple hidden onChange={(e) => add(e.target.files)} />
+      {demo ? (
+        <div className="rounded-lg border border-dashed border-control px-3 py-3 text-center text-sm text-ink-subtle">Attachments are disabled in demo mode</div>
+      ) : (
+        <>
+          <div
+            onDragOver={(e) => {
+              e.preventDefault()
+              setOver(true)
+            }}
+            onDragLeave={() => setOver(false)}
+            onDrop={onDrop}
+            className={`rounded-lg border border-dashed px-3 py-3 text-center text-sm ${over ? 'border-control bg-alt' : 'border-control text-ink-subtle'}`}
+          >
+            <div className="flex items-center justify-center gap-2">{files.length ? <Paperclip className="h-4 w-4" /> : <Upload className="h-4 w-4" />} Drop files here</div>
+            <div className="mt-1 text-xs">Files already inside {rootName || 'your folder'} are linked in place; others are copied into the BOM folder.</div>
+          </div>
+          <div className="mt-2 flex gap-2">
+            <button className="btn" onClick={async () => addPaths(await linkFiles())}><Link2 className="h-4 w-4" /> Link existing file…</button>
+            <button className="btn" onClick={() => input.current?.click()}><Upload className="h-4 w-4" /> Attach a copy…</button>
+          </div>
+        </>
+      )}
+      <input ref={input} type="file" multiple hidden onChange={(e) => { copyIn(Array.from(e.target.files ?? [])); e.target.value = '' }} />
     </div>
   )
 }

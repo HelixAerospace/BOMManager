@@ -53,16 +53,7 @@ function Welcome() {
             <button className="btn-ghost mt-2 w-full justify-center" onClick={s.openFolder}>Choose a different folder</button>
           </>
         )}
-        {s.mode === 'init-folder' && (
-          <>
-            <p className="mb-4 text-sm text-ink-muted">The folder <b>{s.folderName}</b> has no BOM data yet. How do you want to start?</p>
-            <div className="space-y-2">
-              <button className="btn-primary w-full justify-center" onClick={() => s.initFolder(false)}>Start empty</button>
-              <button className="btn w-full justify-center" onClick={() => s.initFolder(true)}>Start with example data</button>
-              <button className="btn-ghost w-full justify-center" onClick={s.openFolder}>Choose a different folder</button>
-            </div>
-          </>
-        )}
+        {s.mode === 'init-folder' && <InitFolder />}
         {s.mode === 'welcome' && (
           <>
             <p className="mb-2 text-sm text-ink-muted">Your BOM lives in a folder you choose — for example <b>OneDrive › Helix BOM</b>. OneDrive keeps it in sync between your computers.</p>
@@ -77,6 +68,28 @@ function Welcome() {
         )}
       </div>
     </Centered>
+  )
+}
+
+function InitFolder() {
+  const s = useStore()
+  const [sub, setSub] = useState(true)
+  return (
+    <>
+      <p className="mb-4 text-sm text-ink-muted">The folder <b className="text-ink">{s.folderName}</b> has no BOM data yet. How do you want to start?</p>
+      <label className="mb-4 flex items-start gap-2 rounded-lg border border-hairline p-3 text-sm">
+        <input type="checkbox" className="mt-1" checked={sub} onChange={(e) => setSub(e.target.checked)} />
+        <span>
+          Keep the BOM data in a <b>Helix BOM</b> subfolder
+          <span className="block text-xs text-ink-subtle">Recommended when this folder also holds your CAD files: you can then link STEP files anywhere inside {s.folderName} without copying them.</span>
+        </span>
+      </label>
+      <div className="space-y-2">
+        <button className="btn-primary w-full justify-center" onClick={() => s.initFolder(false, sub)}>Start empty</button>
+        <button className="btn w-full justify-center" onClick={() => s.initFolder(true, sub)}>Start with example data</button>
+        <button className="btn-ghost w-full justify-center" onClick={s.openFolder}>Choose a different folder</button>
+      </div>
+    </>
   )
 }
 

@@ -14,6 +14,8 @@ A simple, single-user BOM manager for the Helix drone: parts, multi-level BOM wi
 | `files/<PN or PO>/…` | Attachments: invoices, drawings, datasheets, STEP files |
 | `backups/` | A copy of the data file from before every save (last 100) |
 
+**Linking instead of copying.** Attachments can be copies (kept in `files/`) or links to files that already sit anywhere inside the folder you chose, such as STEP files next to your Inventor models. To link CAD files from a wider area, choose a higher folder (for example the Helix OneDrive root) and keep the BOM data in a `Helix BOM` subfolder. The app looks for the data one level down. Linked files that are moved or renamed show as **Missing**.
+
 To undo a bad save, close the app, copy a file from `backups/` over `helix-bom-data.json`, and open the app again. OneDrive's own version history works too.
 
 ## Using two computers

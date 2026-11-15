@@ -114,7 +114,8 @@ export default function SettingsScreen() {
             <p className="text-sm text-ink-subtle">You’re in demo mode — nothing is saved. Choose a folder to start for real.</p>
           ) : (
             <p className="text-sm text-ink-subtle">
-              Using <b className="text-ink">{s.folderName}</b>. It contains <code>helix-bom-data.json</code> (everything), <code>files/</code> (attachments, one folder per part or order) and <code>backups/</code> (a copy before every save, last 100 kept).
+              Using <b className="text-ink">{s.folderName}</b>. The data folder contains <code>helix-bom-data.json</code> (everything), <code>files/</code> (copies of attachments, one folder per part or order) and <code>backups/</code> (a copy before every save, last 100 kept).
+              Attachments can also be <b>linked in place</b>: any file inside <b className="text-ink">{s.rootName}</b> (for example a STEP file next to the Inventor model) is linked without copying. To link files from a wider area, choose a higher folder with Switch folder; the app finds the BOM data in a subfolder one level down.
             </p>
           )}
           <div className="mt-3 flex gap-2">

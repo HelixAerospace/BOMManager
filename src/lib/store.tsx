@@ -33,12 +33,16 @@ interface Store {
   reload: () => Promise<void>
   openFolder: () => Promise<void>
   reconnect: () => Promise<void>
-  initFolder: (withSample: boolean) => Promise<void>
+  initFolder: (withSample: boolean, inSubfolder?: boolean) => Promise<void>
   startDemo: () => void
   closeFolder: () => Promise<void>
   dismissConflict: () => void
   notify: (msg: string) => void
   attach: (group: string, file: File) => Promise<string | null>
+  linkFiles: () => Promise<string[]>
+  linkHandle: (h: FileSystemFileHandle) => Promise<string | null>
+  fileExists: (path: string) => Promise<boolean>
+  rootName: string
   openFile: (path: string) => Promise<void>
 }
 
@@ -52,7 +56,9 @@ export const useData = () => useStore().data
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [mode, setMode] = useState<Mode>('loading')
-  const [dir, setDir] = useState<FileSystemDirectoryHandle | null>(null)
+  const [dir, setDir] = useState<FileSystemDirectoryHandle | null>(null) // folder the user picked (links are relative to it)
+  const [dataSub, setDataSub] = useState('') // subfolder holding the data file ('' = the picked folder itself)
+  const dataDirRef = useRef<FileSystemDirectoryHandle | null>(null)
   const [demo, setDemo] = useState(false)
   const [data, setData] = useState<BomData>(emptyData)
   const [dirty, setDirty] = useState(false)
@@ -85,8 +91,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const load = useCallback(async (handle: FileSystemDirectoryHandle) => {
-    const st = await fs.readData(handle)
     setDir(handle)
+    const found = await fs.findDataDir(handle)
+    dataDirRef.current = found?.dir ?? null
+    setDataSub(found?.sub ?? '')
+    const st = found ? await fs.readData(found.dir) : null
     setDemo(false)
     if (!st) {
       setMode('init-folder')
@@ -139,7 +148,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       savingRef.current = true
       setSaving(true)
       try {
-        const disk = await fs.peekRevision(dir)
+        const disk = await fs.peekRevision(dataDirRef.current!)
         if (!force && disk && disk.revision > loadedRevision.current) {
           setConflict({ revision: disk.revision, savedAt: disk.savedAt, savedBy: disk.savedBy })
           return
@@ -151,7 +160,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           savedAt: new Date().toISOString(),
           savedBy: fs.deviceName(),
         }
-        await fs.writeData(dir, next)
+        await fs.writeData(dataDirRef.current!, next)
         loadedRevision.current = next.revision
         setLastSaved(next.savedAt)
         if (dataRef.current === snapshot) {
@@ -191,7 +200,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (mode !== 'ready' || !dir) return
     const check = async () => {
       if (document.visibilityState !== 'visible') return
-      const disk = await fs.peekRevision(dir)
+      if (!dataDirRef.current) return
+      const disk = await fs.peekRevision(dataDirRef.current)
       if (!disk || disk.revision <= loadedRevision.current) return
       if (!dirty) {
         await load(dir)
@@ -261,13 +271,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [dir, load])
 
   const initFolder = useCallback(
-    async (withSample: boolean) => {
+    async (withSample: boolean, inSubfolder = false) => {
       if (!dir) return
+      const target = inSubfolder ? await dir.getDirectoryHandle('Helix BOM', { create: true }) : dir
       const d = withSample ? sampleData() : emptyData()
       d.revision = 1
       d.savedAt = new Date().toISOString()
       d.savedBy = fs.deviceName()
-      await fs.writeData(dir, d)
+      await fs.writeData(target, d)
       await load(dir)
     },
     [dir, load],
@@ -297,7 +308,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return null
       }
       try {
-        return await fs.saveAttachment(dir, group, file)
+        return await fs.saveAttachment(dataDirRef.current ?? dir, group, file)
       } catch (e) {
         setError(`Could not save file: ${e}`)
         return null
@@ -310,7 +321,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     async (path: string) => {
       if (!dir) return
       try {
-        const f = await fs.readAttachment(dir, path)
+        const f = await fs.readAttachment(path.startsWith('/') ? dir : (dataDirRef.current ?? dir), path)
         const url = URL.createObjectURL(f)
         const viewable = /\.(pdf|png|jpe?g|gif|webp|txt|svg)$/i.test(f.name)
         if (viewable) window.open(url, '_blank')
@@ -328,13 +339,65 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [dir],
   )
 
+  /** Lets the user pick existing files and returns links to them (no copy). Files must be inside the chosen folder. */
+  const linkFiles = useCallback(async (): Promise<string[]> => {
+    if (!dir) {
+      notify('Linking files needs a data folder (not available in demo mode)')
+      return []
+    }
+    let handles: FileSystemFileHandle[]
+    try {
+      handles = await window.showOpenFilePicker({ multiple: true, startIn: dir })
+    } catch (e) {
+      if ((e as Error).name !== 'AbortError') setError(String(e))
+      return []
+    }
+    const out: string[] = []
+    const outside: string[] = []
+    for (const h of handles) {
+      const rel = await fs.relativePath(dir, h)
+      if (rel) out.push('/' + rel)
+      else outside.push(h.name)
+    }
+    if (outside.length)
+      setError(`${outside.join(', ')} ${outside.length > 1 ? 'are' : 'is'} outside “${dir.name}”, so the app can't link to ${outside.length > 1 ? 'them' : 'it'}. Move the file into that folder, attach a copy instead, or choose a higher folder in Settings › Switch folder.`)
+    return out
+  }, [dir, notify])
+
+  /** For drag-and-drop: a link if the dropped file is inside the chosen folder, otherwise null. */
+  const linkHandle = useCallback(
+    async (h: FileSystemFileHandle) => {
+      if (!dir) return null
+      try {
+        const rel = await fs.relativePath(dir, h)
+        return rel ? '/' + rel : null
+      } catch {
+        return null
+      }
+    },
+    [dir],
+  )
+
+  const fileExists = useCallback(
+    async (path: string) => {
+      if (!dir) return true
+      try {
+        await fs.readAttachment(path.startsWith('/') ? dir : (dataDirRef.current ?? dir), path)
+        return true
+      } catch {
+        return false
+      }
+    },
+    [dir],
+  )
+
   const value = useMemo<Store>(
     () => ({
-      mode, demo, folderName: dir?.name ?? '', data, dirty, saving, lastSaved, conflict, updateAvailable, toast, error,
+      mode, demo, folderName: dir ? (dataSub ? `${dir.name} › ${dataSub}` : dir.name) : '', rootName: dir?.name ?? '', data, dirty, saving, lastSaved, conflict, updateAvailable, toast, error,
       update, save, saveIfDirty, reload, openFolder, reconnect, initFolder, startDemo, closeFolder,
-      dismissConflict: () => setConflict(null), notify, attach, openFile,
+      dismissConflict: () => setConflict(null), notify, attach, openFile, linkFiles, linkHandle, fileExists,
     }),
-    [mode, demo, dir, data, dirty, saving, lastSaved, conflict, updateAvailable, toast, error, update, save, saveIfDirty, reload, openFolder, reconnect, initFolder, startDemo, closeFolder, notify, attach, openFile],
+    [mode, demo, dir, data, dirty, saving, lastSaved, conflict, updateAvailable, toast, error, update, save, saveIfDirty, reload, openFolder, reconnect, initFolder, startDemo, closeFolder, notify, attach, openFile, linkFiles, linkHandle, fileExists, dataSub],
   )
   return (
     <Ctx.Provider value={value}>

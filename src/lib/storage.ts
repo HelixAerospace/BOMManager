@@ -148,8 +148,35 @@ export async function saveAttachment(dir: FileSystemDirectoryHandle, group: stri
   return `files/${safe(group)}/${name}`
 }
 
+/** Where the data file lives inside the chosen folder: the folder itself, or one level down
+ *  (so you can give the app access to a parent folder that also holds your CAD files). */
+export async function findDataDir(root: FileSystemDirectoryHandle): Promise<{ dir: FileSystemDirectoryHandle; sub: string } | null> {
+  try {
+    await root.getFileHandle(DATA_FILE)
+    return { dir: root, sub: '' }
+  } catch {
+    /* not at the top level */
+  }
+  for await (const [name, h] of root.entries()) {
+    if (h.kind !== 'directory' || name.startsWith('.')) continue
+    try {
+      await (h as FileSystemDirectoryHandle).getFileHandle(DATA_FILE)
+      return { dir: h as FileSystemDirectoryHandle, sub: name }
+    } catch {
+      /* keep looking */
+    }
+  }
+  return null
+}
+
+/** Path of a picked file relative to the folder the app can access, or null if it is outside it. */
+export async function relativePath(root: FileSystemDirectoryHandle, file: FileSystemFileHandle) {
+  const parts = await root.resolve(file)
+  return parts ? parts.join('/') : null
+}
+
 export async function readAttachment(dir: FileSystemDirectoryHandle, path: string) {
-  const parts = path.split('/')
+  const parts = path.split('/').filter(Boolean)
   let d = dir
   for (const p of parts.slice(0, -1)) d = await d.getDirectoryHandle(p)
   return (await d.getFileHandle(parts[parts.length - 1])).getFile()
