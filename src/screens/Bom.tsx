@@ -102,18 +102,19 @@ export default function BomScreen() {
   const srcBreakdown = weightBySource(idx, top.id)
 
   // Flatten the tree for rendering.
-  type Row = { key: string; part: Part; lineId: ID | null; parentId: ID | null; qty: number; extQty: number; depth: number; hasKids: boolean }
+  type Row = { key: string; part: Part; lineId: ID | null; parentId: ID | null; qty: number; extQty: number; depth: number; hasKids: boolean; trail: boolean[]; expanded: boolean }
   const rows: Row[] = []
-  const walk = (id: ID, parentId: ID | null, lineId: ID | null, qty: number, ext: number, depth: number, path: string) => {
+  // trail[k] = is the node at depth k+1 on this path the last child of its parent? (drives the tree guide lines)
+  const walk = (id: ID, parentId: ID | null, lineId: ID | null, qty: number, ext: number, depth: number, path: string, trail: boolean[]) => {
     const p = idx.partById.get(id)
     if (!p || depth > 30) return
     const kids = idx.children.get(id) ?? []
-    rows.push({ key: path, part: p, lineId, parentId, qty, extQty: ext, depth, hasKids: kids.length > 0 })
+    rows.push({ key: path, part: p, lineId, parentId, qty, extQty: ext, depth, hasKids: kids.length > 0, trail, expanded: kids.length > 0 && !collapsed.has(path) })
     if (collapsed.has(path)) return
     const sorted = [...kids].sort((a, b) => (idx.partById.get(a.childId)?.pn ?? '').localeCompare(idx.partById.get(b.childId)?.pn ?? ''))
-    for (const k of sorted) walk(k.childId, id, k.lineId, k.qty, ext * k.qty, depth + 1, `${path}/${k.lineId}`)
+    sorted.forEach((k, i) => walk(k.childId, id, k.lineId, k.qty, ext * k.qty, depth + 1, `${path}/${k.lineId}`, [...trail, i === sorted.length - 1]))
   }
-  walk(top.id, null, null, 1, 1, 0, top.id)
+  walk(top.id, null, null, 1, 1, 0, top.id, [])
 
   const allPaths = () => {
     const s = new Set<string>()
@@ -206,8 +207,9 @@ export default function BomScreen() {
                   return (
                     <Fragment key={r.key}>
                       <tr className={`group ${r.hasKids ? 'bg-alt' : ''}`}>
-                        <td>
-                          <div className="flex items-center gap-1" style={{ paddingLeft: r.depth * 18 }}>
+                        <td className="relative">
+                          <TreeGuides trail={r.trail} expanded={r.expanded} />
+                          <div className="relative flex items-center gap-1" style={{ paddingLeft: r.depth * INDENT }}>
                             {r.hasKids ? (
                               <button className="text-ink-subtle hover:text-ink" onClick={() => setCollapsed((s) => { const n = new Set(s); n.has(r.key) ? n.delete(r.key) : n.add(r.key); return n })}>
                                 {collapsed.has(r.key) ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -222,9 +224,9 @@ export default function BomScreen() {
                         </td>
 {view === 'tree' ? (<>
                         <td>{r.hasKids ? <span className="text-xs text-ink-subtle">Assembly</span> : <MakeBuyChip v={r.part.makeBuy} />}</td>
-                        <td className="num w-20">
+                        <td className="num w-24 min-w-24">
                           {r.lineId ? (
-                            <NumInput className="cell-input num" value={r.qty} min={0} onChange={(v) => update((d) => void (d.bom.find((l) => l.id === r.lineId)!.qty = v))} />
+                            <NumInput className="cell-input num min-w-16" value={r.qty} min={0} onChange={(v) => update((d) => void (d.bom.find((l) => l.id === r.lineId)!.qty = v))} />
                           ) : '—'}
                         </td>
                         <td className="num text-ink-subtle">{isTop ? '' : fmtNum(r.extQty)}</td>
@@ -234,9 +236,9 @@ export default function BomScreen() {
                         <td className="num">{r.hasKids ? '' : fmtNum(r.part.onHand)}</td>
                         <td>{!r.hasKids && av && <AvailabilityChip a={availability(av)} />}</td>
 </>) : (<>
-                        <td className="num w-20">
+                        <td className="num w-24 min-w-24">
                           {r.lineId ? (
-                            <NumInput className="cell-input num" value={r.qty} min={0} onChange={(v) => update((d) => void (d.bom.find((l) => l.id === r.lineId)!.qty = v))} />
+                            <NumInput className="cell-input num min-w-16" value={r.qty} min={0} onChange={(v) => update((d) => void (d.bom.find((l) => l.id === r.lineId)!.qty = v))} />
                           ) : '—'}
                         </td>
                         <td className="num text-ink-subtle">{isTop ? '' : fmtNum(r.extQty)}</td>
@@ -267,8 +269,9 @@ export default function BomScreen() {
                       </tr>
                       {(addingTo === r.key || (isTop && !r.hasKids)) && (
                         <tr>
-                          <td colSpan={view === 'tree' ? 10 : 8} className="bg-alt">
-                            <div className="flex items-center gap-2" style={{ paddingLeft: r.depth * 18 + 24 }}>
+                          <td colSpan={view === 'tree' ? 10 : 8} className="relative bg-alt">
+                            <TreeGuides trail={[...r.trail, !r.expanded]} expanded={false} />
+                            <div className="relative flex items-center gap-2" style={{ paddingLeft: (r.depth + 1) * INDENT + 4 }}>
                               <div className="w-96"><PartPicker parts={data.parts.filter((p) => p.id !== r.part.id)} onPick={(p) => addChild(r.part.id, p)} placeholder={`Add part to ${r.part.name}…`} /></div>
                               <button className="btn" onClick={() => {
                                 const p = newPart(data, 'PUR', 'buy')
@@ -331,3 +334,29 @@ export default function BomScreen() {
   )
 }
 
+
+// ---------- tree guide lines ----------
+const INDENT = 22 // px per level
+const PAD = 12 // td left padding (px-3)
+const lineX = (level: number) => PAD + (level - 1) * INDENT + 8 // centre of the parent's chevron
+
+/** Draws ├ / └ connectors and the vertical lines of open assemblies, so it's clear which rows belong to which assembly. */
+function TreeGuides({ trail, expanded }: { trail: boolean[]; expanded: boolean }) {
+  const depth = trail.length
+  const line = 'absolute bg-control'
+  return (
+    <div className="pointer-events-none absolute inset-0" aria-hidden>
+      {/* ancestors that still have siblings below: line runs the full row height */}
+      {trail.slice(0, -1).map((isLast, i) => !isLast && <div key={i} className={`${line} top-0 bottom-0 w-px`} style={{ left: lineX(i + 1) }} />)}
+      {depth > 0 && (
+        <>
+          {/* own connector: down from the top to the middle (├ continues to the bottom if more siblings follow) */}
+          <div className={`${line} top-0 w-px`} style={{ left: lineX(depth), bottom: trail[depth - 1] ? '50%' : 0 }} />
+          <div className={`${line} h-px`} style={{ left: lineX(depth), top: '50%', width: INDENT - 8 }} />
+        </>
+      )}
+      {/* an open assembly starts a new line down to its first child */}
+      {expanded && <div className={`${line} bottom-0 w-px`} style={{ left: lineX(depth + 1), top: '50%' }} />}
+    </div>
+  )
+}
