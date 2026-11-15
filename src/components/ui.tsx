@@ -50,10 +50,12 @@ export function StepBar({ status }: { status: OrderStatus }) {
     </div>
   )
 }
-export function AvailabilityChip({ a }: { a: Availability }) {
-  if (a === 'in-stock') return <Chip color="tip" icon={<CheckCircle2 className={ic} />}>In stock</Chip>
-  if (a === 'expected') return <Chip color="note" icon={<Truck className={ic} />}>Expected</Chip>
-  return <Chip color="warning" icon={<AlertTriangle className={ic} />}>Short</Chip>
+export function AvailabilityChip({ a, title }: { a: Availability; title?: string }) {
+  const chip =
+    a === 'in-stock' ? <Chip color="tip" icon={<CheckCircle2 className={ic} />}>In stock</Chip>
+    : a === 'expected' ? <Chip color="note" icon={<Truck className={ic} />}>Expected</Chip>
+    : <Chip color="warning" icon={<AlertTriangle className={ic} />}>Short</Chip>
+  return title ? <span title={title} className="cursor-help">{chip}</span> : chip
 }
 export function StockChip({ s }: { s: StockState }) {
   if (s === 'ok') return <Chip icon={<CheckCircle2 className={ic} />}>OK</Chip>

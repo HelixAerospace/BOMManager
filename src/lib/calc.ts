@@ -360,3 +360,38 @@ export function weightBySource(idx: Idx, topId: ID): WeightBreakdown {
   const total = grams.cad + grams.supplier + grams.measured + grams.unset
   return { grams, total, missingParts: missing.size }
 }
+
+// ---------- expected deliveries ----------
+export interface Arrival {
+  orderId: ID
+  orderNumber: string
+  supplierId: ID | null
+  qty: number // pieces still to come
+  expectedDate: string // '' if not set
+  late: boolean
+}
+
+/** Open order lines not yet fully received, per part, earliest expected date first. */
+export function expectedArrivals(data: BomData) {
+  const m = new Map<ID, Arrival[]>()
+  for (const o of data.orders) {
+    if (!isOpen(o)) continue
+    for (const l of o.lines) {
+      const qty = l.qty - l.qtyReceived
+      if (qty <= 0) continue
+      if (!m.has(l.partId)) m.set(l.partId, [])
+      m.get(l.partId)!.push({ orderId: o.id, orderNumber: o.number, supplierId: o.supplierId, qty, expectedDate: o.expectedDate, late: isLate(o) })
+    }
+  }
+  for (const list of m.values()) list.sort((a, b) => (a.expectedDate || '9999').localeCompare(b.expectedDate || '9999'))
+  return m
+}
+
+/** Hover text such as "PO-0005 · 12 pcs · expected 24 Nov 2026 (Galil CNC)". */
+export function arrivalsText(list: Arrival[] | undefined, supplierName: (id: ID | null) => string) {
+  if (!list?.length) return ''
+  const fmtD = (d: string) => (d ? new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '')
+  return list
+    .map((a) => `${a.orderNumber} · ${fmtNum(a.qty)} pcs · ${a.expectedDate ? `${a.late ? 'was due' : 'expected'} ${fmtD(a.expectedDate)}${a.late ? ' (late)' : ''}` : 'no expected date set'} · ${supplierName(a.supplierId)}`)
+    .join('\n')
+}

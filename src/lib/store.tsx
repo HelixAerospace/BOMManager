@@ -28,6 +28,7 @@ interface Store {
   toast: string | null
   error: string | null
   update: (recipe: (d: Draft<BomData>) => void) => void
+  updateAndSave: (recipe: (d: Draft<BomData>) => void) => void
   save: (force?: boolean) => Promise<void>
   saveIfDirty: () => Promise<void>
   reload: () => Promise<void>
@@ -186,6 +187,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [demo, dir, notify, setDataSync, setDirtySync],
   )
   saveRef.current = save
+  /** Applies a change and saves it shortly after (for view settings like the build quantity). */
+  const autoSaveTimer = useRef<number>(0)
+  const updateAndSave = useCallback(
+    (recipe: (d: Draft<BomData>) => void) => {
+      update(recipe)
+      window.clearTimeout(autoSaveTimer.current)
+      autoSaveTimer.current = window.setTimeout(() => {
+        if (dirtyRef.current) void saveRef.current()
+      }, 800)
+    },
+    [update],
+  )
   /** Saves only when there are unsaved changes (used when an edit panel closes). */
   const saveIfDirty = useCallback(async () => {
     if (dirtyRef.current) await saveRef.current()
@@ -394,10 +407,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const value = useMemo<Store>(
     () => ({
       mode, demo, folderName: dir ? (dataSub ? `${dir.name} › ${dataSub}` : dir.name) : '', rootName: dir?.name ?? '', data, dirty, saving, lastSaved, conflict, updateAvailable, toast, error,
-      update, save, saveIfDirty, reload, openFolder, reconnect, initFolder, startDemo, closeFolder,
+      update, updateAndSave, save, saveIfDirty, reload, openFolder, reconnect, initFolder, startDemo, closeFolder,
       dismissConflict: () => setConflict(null), notify, attach, openFile, linkFiles, linkHandle, fileExists,
     }),
-    [mode, demo, dir, data, dirty, saving, lastSaved, conflict, updateAvailable, toast, error, update, save, saveIfDirty, reload, openFolder, reconnect, initFolder, startDemo, closeFolder, notify, attach, openFile, linkFiles, linkHandle, fileExists, dataSub],
+    [mode, demo, dir, data, dirty, saving, lastSaved, conflict, updateAvailable, toast, error, update, updateAndSave, save, saveIfDirty, reload, openFolder, reconnect, initFolder, startDemo, closeFolder, notify, attach, openFile, linkFiles, linkHandle, fileExists, dataSub],
   )
   return (
     <Ctx.Provider value={value}>

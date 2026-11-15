@@ -9,7 +9,7 @@ import { Card, Empty, Kpi, OrderStatusChip, PageHeader, StepBar } from '../compo
 
 export default function Dashboard() {
   const { fmt: money, sym, cur: dispCur } = useMoney()
-  const { data, update } = useStore()
+  const { data, updateAndSave } = useStore()
   const nav = useNav()
   const { idx, costs, weights, topAssemblies } = useDerived()
   const topId = data.settings.topAssemblyId && idx.partById.has(data.settings.topAssemblyId) ? data.settings.topAssemblyId : topAssemblies[0]?.id
@@ -63,12 +63,12 @@ export default function Dashboard() {
         actions={
           topAssemblies.length > 0 && (
             <>
-              <select className="input w-auto" value={topId} onChange={(e) => update((d) => void (d.settings.topAssemblyId = e.target.value))}>
+              <select className="input w-auto" value={topId} onChange={(e) => updateAndSave((d) => void (d.settings.topAssemblyId = e.target.value))}>
                 {topAssemblies.map((a) => <option key={a.id} value={a.id}>{a.pn} {a.name}</option>)}
               </select>
               <div className="flex items-center gap-1 text-sm text-ink-subtle">
                 Build
-                <input type="number" min={1} className="input w-16 num" value={units} onChange={(e) => update((d) => void (d.settings.buildQty = Math.max(1, parseInt(e.target.value) || 1)))} />
+                <input type="number" min={1} className="input w-16 num" value={units} onChange={(e) => updateAndSave((d) => void (d.settings.buildQty = Math.max(1, parseInt(e.target.value) || 1)))} />
                 units
               </div>
             </>

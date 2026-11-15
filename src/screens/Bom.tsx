@@ -3,7 +3,7 @@ import { ChevronDown, ChevronRight, ListTree, Plus, ShoppingCart, Trash2, Chevro
 import { useStore } from '../lib/store'
 import { useNav } from '../lib/nav'
 import { useDerived, useMoney } from '../lib/derived'
-import { availability, buildCheck, createsCycle, fmtMoney, fmtNum, fmtWeight, nextPoNumber, roundToPacks, weightBySource } from '../lib/calc'
+import { arrivalsText, availability, buildCheck, createsCycle, fmtMoney, fmtNum, fmtWeight, nextPoNumber, roundToPacks, weightBySource } from '../lib/calc'
 import { WeightSourceChip, WeightSourceStats } from '../components/weight'
 import { type ID, type Part, uid } from '../lib/types'
 import { AvailabilityChip, Empty, FilterTabs, MakeBuyChip, NumInput, PageHeader, PartPicker } from '../components/ui'
@@ -11,16 +11,18 @@ import { newPart } from './Parts'
 
 export default function BomScreen() {
   const { fmt: money, sym, cur: dispCur } = useMoney()
-  const { data, update, notify } = useStore()
+  const { data, update, updateAndSave, notify } = useStore()
+  const supName = (id: string | null) => idx.supplierById.get(id ?? '')?.name ?? 'no supplier'
   const nav = useNav()
-  const { idx, costs, actual, weights, onOrder, topAssemblies } = useDerived()
+  const { idx, costs, actual, weights, onOrder, arrivals, topAssemblies } = useDerived()
   const assemblies = data.parts.filter((p) => idx.children.has(p.id) || p.category === 'ASM')
   const [sel, setSel] = useState<ID | undefined>(data.settings.topAssemblyId ?? topAssemblies[0]?.id)
   const topId = sel && idx.partById.has(sel) ? sel : topAssemblies[0]?.id ?? assemblies[0]?.id
   const [view, setView] = useState<'tree' | 'weight' | 'build'>('tree')
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const [addingTo, setAddingTo] = useState<ID | null>(null)
-  const [units, setUnits] = useState(data.settings.buildQty || 1)
+  const units = data.settings.buildQty || 1
+  const setUnits = (v: number) => updateAndSave((d) => void (d.settings.buildQty = Math.max(1, v)))
   const [spares, setSpares] = useState(false)
 
   const bc = useMemo(() => (topId ? buildCheck(data, idx, topId, units, spares) : null), [data, idx, topId, units, spares])
@@ -235,8 +237,8 @@ export default function BomScreen() {
                         <td className="num font-medium">{isTop ? money(c?.planned) : money((c?.planned ?? 0) * r.qty)}</td>
                         <td className="num text-ink-subtle">{r.hasKids ? (c && c.actualCoverage > 0 ? money(c.actual) : '') : a ? <span title={`from ${a.orderNumber}`}>{money(a.unitIls)}</span> : ''}</td>
                         <td className="num">{r.hasKids ? '' : fmtNum(r.part.onHand)}</td>
-                        <td className="num text-ink-muted">{r.hasKids ? '' : onOrder.get(r.part.id) ? fmtNum(onOrder.get(r.part.id)!) : ''}</td>
-                        <td>{!r.hasKids && av && <AvailabilityChip a={availability(av)} />}</td>
+                        <td className="num text-ink-muted" title={arrivalsText(arrivals.get(r.part.id), supName) || undefined}>{r.hasKids ? '' : onOrder.get(r.part.id) ? fmtNum(onOrder.get(r.part.id)!) : ''}</td>
+                        <td>{!r.hasKids && av && <AvailabilityChip a={availability(av)} title={arrivalsText(arrivals.get(r.part.id), supName) || undefined} />}</td>
 </>) : (<>
                         <td className="num w-20">
                           {r.lineId ? (
@@ -324,7 +326,7 @@ export default function BomScreen() {
                     <td className="num">{r.onOrder ? fmtNum(r.onOrder) : ''}</td>
                     <td className="num">{r.shortNow ? fmtNum(r.shortNow) : ''}</td>
                     <td className={`num font-medium ${r.shortAfterOrders ? 'text-warning' : ''}`}>{r.shortAfterOrders ? fmtNum(r.shortAfterOrders) : ''}</td>
-                    <td><AvailabilityChip a={availability(r)} /></td>
+                    <td><AvailabilityChip a={availability(r)} title={arrivalsText(arrivals.get(r.part.id), supName) || undefined} /></td>
                   </tr>
                 ))}
               </tbody>
