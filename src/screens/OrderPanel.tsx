@@ -1,4 +1,6 @@
-import { PackageCheck, Send, Trash2, Truck, X } from 'lucide-react'
+import { useState } from 'react'
+import { ListPlus, PackageCheck, Send, Trash2, Truck, X } from 'lucide-react'
+import AddPartsDialog from './AddPartsDialog'
 import { useStore } from '../lib/store'
 import { useNav } from '../lib/nav'
 import { useDerived, useMoney } from '../lib/derived'
@@ -32,6 +34,7 @@ export default function OrderPanel({ id }: { id: string }) {
   const { data, update, saveIfDirty } = useStore()
   const nav = useNav()
   const { idx } = useDerived()
+  const [browse, setBrowse] = useState(false)
   const o = data.orders.find((x) => x.id === id)
   if (!o) return null
   const set = <K extends keyof Order>(k: K, v: Order[K]) => update((d) => void (d.orders.find((x) => x.id === id)![k] = v))
@@ -161,6 +164,8 @@ export default function OrderPanel({ id }: { id: string }) {
               })}
               <tr>
                 <td colSpan={6} className="bg-alt">
+                  <div className="flex items-center gap-2">
+                  <div className="flex-1">
                   <PartPicker
                     parts={data.parts.filter((p) => !idx.children.has(p.id) || p.makeBuy === 'buy')}
                     exclude={new Set(o.lines.map((l) => l.partId))}
@@ -173,6 +178,9 @@ export default function OrderPanel({ id }: { id: string }) {
                       x.lines.push({ id: uid(), partId: p.id, qty: isPacked(p) ? p.packQty! : 1, unitPrice: Math.round(price * 10000) / 10000, qtyReceived: 0 })
                     })}
                   />
+                  </div>
+                  <button className="btn" onClick={() => setBrowse(true)}><ListPlus className="h-4 w-4" /> Browse parts…</button>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -202,6 +210,7 @@ export default function OrderPanel({ id }: { id: string }) {
       <Section title="Notes">
         <textarea className="input min-h-16" value={o.notes} placeholder="Tracking numbers, drawing revisions sent, contacts…" onChange={(e) => set('notes', e.target.value)} />
       </Section>
+      {browse && <AddPartsDialog order={o} onClose={() => setBrowse(false)} />}
     </SidePanel>
   )
 }

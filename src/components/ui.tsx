@@ -152,16 +152,28 @@ export function SidePanel({ title, subtitle, onClose, children, footerLeft, foot
   )
 }
 
-export function Modal({ title, onClose, children, footer }: { title: string; onClose: () => void; children: ReactNode; footer?: ReactNode }) {
+export function Modal({ title, onClose, children, footer, wide }: { title: string; onClose: () => void; children: ReactNode; footer?: ReactNode; wide?: boolean }) {
+  // Esc closes only this dialog, not the panel underneath it.
+  const close = useRef(onClose)
+  close.current = onClose
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      e.stopImmediatePropagation()
+      close.current()
+    }
+    window.addEventListener('keydown', k, true)
+    return () => window.removeEventListener('keydown', k, true)
+  }, [])
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="w-full max-w-lg rounded-lg border border-hairline bg-surface">
+      <div className={`flex max-h-[90vh] w-full ${wide ? 'max-w-4xl' : 'max-w-lg'} flex-col rounded-lg border border-hairline bg-surface`}>
         <div className="flex items-center justify-between border-b border-hairline px-5 py-3">
           <div className="text-[19px] font-semibold leading-[26px]">{title}</div>
           <button className="btn-icon" onClick={onClose} aria-label="Close"><X className="h-4 w-4" /></button>
         </div>
-        <div className="px-5 py-4">{children}</div>
-        {footer && <div className="flex justify-end gap-2 border-t border-hairline px-5 py-3">{footer}</div>}
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
+        {footer && <div className="flex items-center justify-end gap-2 border-t border-hairline px-5 py-3">{footer}</div>}
       </div>
     </div>
   )
@@ -225,26 +237,43 @@ export function FilterTabs<T extends string>({ value, onChange, options }: { val
   )
 }
 
-/** Searchable part picker. */
+/** Searchable part picker. The list is positioned on the page (not inside its table) so it is never cut off. */
 export function PartPicker({ parts, onPick, placeholder = 'Add part… (type PN or name)', exclude }: { parts: Part[]; onPick: (p: Part) => void; placeholder?: string; exclude?: Set<string> }) {
   const [q, setQ] = useState('')
   const [open, setOpen] = useState(false)
   const [hi, setHi] = useState(0)
+  const [rect, setRect] = useState<DOMRect | null>(null)
+  const ref = useRef<HTMLInputElement>(null)
   const list = useMemo(() => {
     const s = q.toLowerCase()
     return parts
       .filter((p) => !exclude?.has(p.id))
       .filter((p) => !s || p.pn.toLowerCase().includes(s) || p.name.toLowerCase().includes(s))
-      .slice(0, 12)
+      .sort((a, b) => a.pn.localeCompare(b.pn))
+      .slice(0, 50)
   }, [parts, q, exclude])
+  useEffect(() => {
+    if (!open) return
+    const place = () => ref.current && setRect(ref.current.getBoundingClientRect())
+    place()
+    window.addEventListener('scroll', place, true)
+    window.addEventListener('resize', place)
+    return () => {
+      window.removeEventListener('scroll', place, true)
+      window.removeEventListener('resize', place)
+    }
+  }, [open])
   const pick = (p: Part) => {
     onPick(p)
     setQ('')
-    setOpen(false)
+    setHi(0)
   }
+  const maxH = 288
+  const below = rect ? window.innerHeight - rect.bottom - 8 >= Math.min(maxH, 120) || rect.top < maxH : true
   return (
     <div className="relative">
       <input
+        ref={ref}
         className="input"
         value={q}
         placeholder={placeholder}
@@ -259,19 +288,36 @@ export function PartPicker({ parts, onPick, placeholder = 'Add part… (type PN 
           if (e.key === 'ArrowDown') setHi((h) => Math.min(h + 1, list.length - 1))
           if (e.key === 'ArrowUp') setHi((h) => Math.max(h - 1, 0))
           if (e.key === 'Enter' && list[hi]) pick(list[hi])
+          if (e.key === 'Escape') {
+            e.stopPropagation()
+            ;(e.target as HTMLInputElement).blur()
+          }
         }}
       />
-      {open && list.length > 0 && (
-        <div className="absolute z-20 mt-1 max-h-72 w-full overflow-y-auto rounded-lg border border-hairline bg-surface py-1">
+      {open && rect && (
+        <div
+          role="listbox"
+          className="fixed z-50 overflow-y-auto rounded-lg border border-hairline bg-surface py-1"
+          style={{
+            left: rect.left,
+            width: Math.max(rect.width, 360),
+            maxHeight: below ? Math.min(maxH, window.innerHeight - rect.bottom - 8) : Math.min(maxH, rect.top - 8),
+            ...(below ? { top: rect.bottom + 4 } : { bottom: window.innerHeight - rect.top + 4 }),
+          }}
+        >
+          {list.length === 0 && <div className="px-3 py-2 text-sm text-ink-subtle">{parts.length ? 'No matching parts' : 'No parts yet: add them on the Parts page'}</div>}
           {list.map((p, i) => (
             <button
               key={p.id}
+              role="option"
+              aria-selected={i === hi}
               onMouseDown={(e) => e.preventDefault()}
+              onMouseEnter={() => setHi(i)}
               onClick={() => pick(p)}
               className={`flex w-full items-center gap-3 px-3 py-1.5 text-left text-sm ${i === hi ? 'bg-alt' : ''}`}
             >
               <span className="w-24 font-mono text-xs text-ink-subtle">{p.pn}</span>
-              <span className="truncate">{p.name}</span>
+              <span className="truncate">{p.name || 'Unnamed'}</span>
             </button>
           ))}
         </div>

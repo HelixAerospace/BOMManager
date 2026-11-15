@@ -2,14 +2,14 @@ import { useMemo, useState } from 'react'
 import { Paperclip, Plus, ShoppingCart } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useNav } from '../lib/nav'
-import { useDerived, useMoney } from '../lib/derived'
+import { displayCurrencyOf, useDerived, useMoney } from '../lib/derived'
 import { fmtMoney, isLate, isOpen, nextPoNumber, orderValueIls } from '../lib/calc'
 import { type BomData, type Order, uid } from '../lib/types'
 import { Empty, FilterTabs, OrderStatusChip, PageHeader, SearchBox, StepBar } from '../components/ui'
 
 export function newOrder(data: BomData, supplierId: string | null = null): Order {
   const sup = data.suppliers.find((s) => s.id === supplierId)
-  const currency = sup?.currency ?? data.settings.baseCurrency
+  const currency = sup?.currency ?? displayCurrencyOf(data.settings)
   return {
     id: uid(), number: nextPoNumber(data), supplierId, status: 'draft', currency, fxToIls: data.settings.fx[currency] ?? 1,
     orderDate: '', expectedDate: '', receivedDate: '', shipping: 0, invoiceNumber: '', invoiceTotal: null, notes: '', files: [], lines: [],
