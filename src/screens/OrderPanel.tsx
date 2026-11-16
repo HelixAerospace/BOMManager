@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import { ListPlus, PackageCheck, Send, Trash2, Truck, X } from 'lucide-react'
+import { ClipboardX, ListPlus, PackageCheck, Send, ShieldAlert, Trash2, Truck, X } from 'lucide-react'
+import { buildsUsingOrder, newNcr } from '../lib/quality'
+import { NcrStatusChip, SeverityChip } from '../components/quality'
 import AddPartsDialog from './AddPartsDialog'
 import { useStore } from '../lib/store'
 import { useNav } from '../lib/nav'
@@ -69,6 +71,8 @@ export default function OrderPanel({ id }: { id: string }) {
   }
 
   const supplier = idx.supplierById.get(o.supplierId ?? '')
+  const usedIn = buildsUsingOrder(data, id)
+  const ncrs = data.ncrs.filter((n) => n.orderId === id)
 
   return (
     <SidePanel
@@ -79,6 +83,7 @@ export default function OrderPanel({ id }: { id: string }) {
       footerLeft={<button className="btn-ghost text-warning" onClick={remove}><Trash2 className="h-4 w-4" /> Delete</button>}
       footerRight={
         <>
+          <button className="btn" title="Report a nonconformance against this order" onClick={() => { const n = newNcr(data, { orderId: id }); update((d) => void d.ncrs.push(n)); nav.openOrder(null); nav.openNcr(n.id) }}><ClipboardX className="h-4 w-4" /> NCR</button>
           {o.status === 'draft' && <button className="btn-primary" disabled={!o.lines.length} onClick={() => setStatus('ordered')}><Send className="h-4 w-4" /> Mark as ordered</button>}
           {o.status === 'ordered' && <button className="btn" onClick={() => setStatus('shipped')}><Truck className="h-4 w-4" /> Mark shipped</button>}
           {['ordered', 'shipped', 'partial'].includes(o.status) && <button className="btn-primary" onClick={receiveAll}><PackageCheck className="h-4 w-4" /> Receive everything</button>}
@@ -120,6 +125,13 @@ export default function OrderPanel({ id }: { id: string }) {
         </Field>
         {o.currency !== 'ILS' && <Field label={`Rate (₪ per 1 ${o.currency})`} className="col-span-2"><NumInput value={o.fxToIls} min={0} onChange={(v) => set('fxToIls', v)} /></Field>}
       </div>
+
+      {supplier && supplier.aslStatus !== 'approved' && (
+        <div className="mt-4 flex items-start gap-2 rounded-lg border border-caution-line bg-caution-bg px-3 py-2 text-sm">
+          <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-caution" />
+          <span><b className="text-caution">Caution</b> {supplier.name} is {supplier.aslStatus === 'disqualified' ? 'disqualified' : supplier.aslStatus === 'conditional' ? 'only conditionally approved' : 'not on the approved supplier list yet'}. <button className="font-medium text-accent hover:underline" onClick={() => { nav.openOrder(null); nav.openSupplier(supplier.id) }}>Review supplier</button></span>
+        </div>
+      )}
 
       <Section title="Items">
         <div className="overflow-hidden rounded-lg border border-hairline">
@@ -206,6 +218,29 @@ export default function OrderPanel({ id }: { id: string }) {
         </div>
         <div className="mt-3"><Attachments files={o.files} group={o.number} onChange={(f) => set('files', f)} /></div>
       </Section>
+
+      {(usedIn.length > 0 || ncrs.length > 0) && (
+        <Section title="Traceability">
+          {usedIn.length > 0 && (
+            <p className="text-sm">
+              <span className="text-ink-muted">Parts from this order went into: </span>
+              {[...new Map(usedIn.map((u) => [u.build.id, u.build])).values()].map((bld, i) => (
+                <span key={bld.id}>{i > 0 && ', '}<button className="font-mono text-xs text-accent hover:underline" onClick={() => { nav.openOrder(null); nav.openBuild(bld.id) }}>{bld.serial}</button></span>
+              ))}
+            </p>
+          )}
+          {ncrs.length > 0 && (
+            <ul className="mt-2 space-y-1 text-sm">
+              {ncrs.map((n) => (
+                <li key={n.id} className="flex items-center gap-2">
+                  <button className="font-mono text-xs text-accent hover:underline" onClick={() => { nav.openOrder(null); nav.openNcr(n.id) }}>{n.number}</button>
+                  <span className="truncate">{n.title || 'Untitled'}</span><SeverityChip s={n.severity} /><NcrStatusChip n={n} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </Section>
+      )}
 
       <Section title="Notes">
         <textarea className="input min-h-16" value={o.notes} placeholder="Tracking numbers, drawing revisions sent, contacts…" onChange={(e) => set('notes', e.target.value)} />

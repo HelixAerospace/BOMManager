@@ -4,8 +4,8 @@ import { Download, FileUp, FolderOpen, Plus, X } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { displayCurrencyOf, useDerived } from '../lib/derived'
 import { parseInventorCsv, planImport, type ImportPlan, type ImportRow } from '../lib/importer'
-import { fmtMoney, orderValueIls, sourcesOf, toIls } from '../lib/calc'
-import { uid } from '../lib/types'
+import { fmtMoney, orderValueIls, partHasSupplier, sourcesOf, toIls } from '../lib/calc'
+import { ASL_STATUSES, uid } from '../lib/types'
 import { Card, Field, Modal, NumInput, PageHeader } from '../components/ui'
 
 declare const __APP_VERSION__: string
@@ -27,6 +27,40 @@ export default function SettingsScreen() {
 
   const dc = displayCurrencyOf(data.settings)
   const dRate = dc === 'ILS' ? 1 : data.settings.fx[dc]
+  const stamp = () => new Date().toISOString().slice(0, 10)
+  const csv = (name: string, rows: object[]) => download(`helix-${name}-${stamp()}.csv`, '\uFEFF' + Papa.unparse(rows))
+  const supName = (sid: string | null) => idx.supplierById.get(sid ?? '')?.name ?? ''
+  const exportAsl = () =>
+    csv('approved-suppliers', data.suppliers.map((x) => ({
+      Supplier: x.name, Status: ASL_STATUSES.find((a) => a.value === x.aslStatus)?.label ?? 'Not reviewed', Country: x.country ?? '', 'Approved for': x.approvedFor ?? '',
+      'Approved on': x.approvedOn ?? '', 'Next review': x.reviewDue ?? '', 'Basis of approval': x.aslNotes ?? '',
+      Parts: data.parts.filter((p) => partHasSupplier(p, x.id)).map((p) => p.pn).join(' '),
+      'Countries of origin of parts': [...new Set(data.parts.filter((p) => partHasSupplier(p, x.id)).map((p) => p.countryOfOrigin).filter(Boolean))].join('; '),
+      NCRs: data.ncrs.filter((n) => n.supplierId === x.id).map((n) => `${n.number}${n.status === 'open' ? ' (open)' : ''}`).join(' '),
+    })))
+  const exportNcrs = () =>
+    csv('nonconformances', data.ncrs.map((n) => ({
+      NCR: n.number, Date: n.date, Title: n.title, Severity: n.severity, Status: n.status, 'Closed on': n.closedOn,
+      Part: idx.partById.get(n.partId ?? '')?.pn ?? '', Supplier: supName(n.supplierId), Order: data.orders.find((o) => o.id === n.orderId)?.number ?? '',
+      Build: data.builds.find((b) => b.id === n.buildId)?.serial ?? '', 'Qty affected': n.qtyAffected ?? '', Disposition: n.disposition,
+      Description: n.description, 'Root cause': n.rootCause, 'Corrective action': n.correctiveAction,
+    })))
+  const exportTrace = () =>
+    csv('build-traceability', data.builds.flatMap((b) => b.items.map((i) => {
+      const o = data.orders.find((x) => x.id === i.lotOrderId)
+      const p = idx.partById.get(i.partId)
+      return {
+        Unit: b.serial, Assembly: idx.partById.get(b.assemblyId)?.pn ?? '', Configuration: data.releases.find((r) => r.id === b.releaseId)?.name ?? '', Status: b.status,
+        Started: b.startedOn, Completed: b.completedOn, 'Part number': p?.pn ?? '', Part: p?.name ?? '', 'Part rev': p?.rev ?? '', Qty: i.qty,
+        'Lot (order)': o?.number ?? 'unknown', Supplier: o ? supName(o.supplierId) : '', 'Received': o?.receivedDate ?? '', 'Country of origin': p?.countryOfOrigin ?? '',
+        'Serial numbers': i.serials.filter(Boolean).join(' '),
+      }
+    })))
+  const exportRevisions = () =>
+    csv('revision-history', data.parts.flatMap((p) => (p.revisions ?? []).map((r) => ({ 'Part number': p.pn, Part: p.name, Date: r.date, From: r.fromRev, To: r.toRev, 'What changed': r.change, Why: r.reason, Source: r.source ?? 'manual' }))))
+  const exportReleases = () =>
+    csv('released-configurations', data.releases.flatMap((r) => r.lines.map((l) => ({ Configuration: r.name, Released: r.date, Assembly: idx.partById.get(r.assemblyId)?.pn ?? '', Parent: l.parentPn, 'Part number': l.pn, Part: l.name, Rev: l.rev, Qty: l.qty }))))
+
   const exportParts = () => {
     const rows = data.parts.map((p) => ({
       'Part number': p.pn, Name: p.name, Rev: p.rev, Category: p.category, Type: idx.children.has(p.id) ? 'Assembly' : p.makeBuy === 'make' ? 'Custom' : 'Off-the-shelf',
@@ -105,6 +139,18 @@ export default function SettingsScreen() {
             <button className="btn" onClick={exportBom}><Download className="h-4 w-4" /> BOM lines</button>
             <button className="btn" onClick={exportOrders}><Download className="h-4 w-4" /> Orders</button>
             <button className="btn" onClick={() => download(`helix-bom-data-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(data, null, 2), 'application/json')}><Download className="h-4 w-4" /> Full backup (JSON)</button>
+          </div>
+        </Card>
+
+        <Card className="p-5 lg:col-span-2">
+          <h2 className="mb-1 text-[15px] font-semibold leading-6">Quality records (for diligence)</h2>
+          <p className="mb-3 text-sm text-ink-subtle">The four quality records as spreadsheets: approved supplier list with country of origin, nonconformance log, build traceability (every unit, part, lot and serial number) and configuration history (revision changes and released configurations).</p>
+          <div className="flex flex-wrap gap-2">
+            <button className="btn" onClick={exportAsl}><Download className="h-4 w-4" /> Approved supplier list</button>
+            <button className="btn" onClick={exportNcrs}><Download className="h-4 w-4" /> Nonconformance log</button>
+            <button className="btn" onClick={exportTrace}><Download className="h-4 w-4" /> Build traceability</button>
+            <button className="btn" onClick={exportRevisions}><Download className="h-4 w-4" /> Revision history</button>
+            <button className="btn" onClick={exportReleases}><Download className="h-4 w-4" /> Released configurations</button>
           </div>
         </Card>
 

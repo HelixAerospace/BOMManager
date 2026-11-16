@@ -5,6 +5,7 @@ import Papa from 'papaparse'
 import type { Draft } from 'immer'
 import type { BomData, ID, Part } from './types'
 import { uid } from './types'
+import { revisePart } from './quality'
 
 export interface ImportRow {
   item: string
@@ -150,6 +151,7 @@ export function planImport(data: BomData, rows: ImportRow[], targetId: ID, defau
         p.weight = u.value ?? null
         p.weightSource = 'cad'
       }
+      else if (u.field === 'rev') revisePart(p, u.to, 'Revision updated from Inventor BOM import', '', 'inventor')
       else p[u.field] = u.to
     }
     for (const [parentId, want] of desired) {

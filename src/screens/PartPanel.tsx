@@ -1,5 +1,8 @@
-import { Trash2, ExternalLink } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { Trash2, ExternalLink, ClipboardX } from 'lucide-react'
+import { useState, type ReactNode } from 'react'
+import { ReviseDialog, RevisionLog, PartTraceability } from './PartQuality'
+import { CountryInput } from '../components/quality'
+import { newNcr } from '../lib/quality'
 import { useStore } from '../lib/store'
 import { useNav } from '../lib/nav'
 import { useDerived, useMoney } from '../lib/derived'
@@ -16,6 +19,7 @@ export default function PartPanel({ id }: { id: string }) {
   const { data, update, saveIfDirty } = useStore()
   const nav = useNav()
   const { idx, costs, actual, onOrder, weights } = useDerived()
+  const [revising, setRevising] = useState(false)
   const p = idx.partById.get(id)
   if (!p) return null
   const set = <K extends keyof Part>(k: K, v: Part[K]) => update((d) => void (d.parts.find((x) => x.id === id)![k] = v))
@@ -77,6 +81,7 @@ export default function PartPanel({ id }: { id: string }) {
       title={<span className="flex items-center gap-2"><span className="font-mono text-sm text-ink-subtle">{p.pn}</span> {p.name || 'Unnamed part'}</span>}
       subtitle={<span className="flex items-center gap-2">{isAsm ? 'Assembly' : <MakeBuyChip v={p.makeBuy} />}{!isAsm && <StockChip s={stockState(p)} />} rev {p.rev}</span>}
       footerLeft={<button className="btn-ghost text-warning" onClick={remove}><Trash2 className="h-4 w-4" /> Delete part</button>}
+      footerRight={<button className="btn" onClick={() => { const n = newNcr(data, { partId: id, supplierId: p.supplierId }); update((d) => void d.ncrs.push(n)); nav.openPart(null); nav.openNcr(n.id) }}><ClipboardX className="h-4 w-4" /> Report nonconformance</button>}
     >
       <div className="grid grid-cols-5 gap-3 rounded-lg bg-alt p-3 text-sm">
         <Stat label="Planned unit cost" value={money(cost?.planned)} />
@@ -90,7 +95,13 @@ export default function PartPanel({ id }: { id: string }) {
         <div className="grid grid-cols-6 gap-3">
           <Field label="Part number" className="col-span-2"><input className="input font-mono" value={p.pn} onChange={(e) => set('pn', e.target.value)} /></Field>
           <Field label="Name" className="col-span-3"><input autoFocus={!p.name} className="input" value={p.name} onChange={(e) => set('name', e.target.value)} /></Field>
-          <Field label="Rev"><input className="input" value={p.rev} onChange={(e) => set('rev', e.target.value)} /></Field>
+          <div>
+            <span className="label">Rev</span>
+            <div className="flex h-9 items-center gap-1 rounded-lg border border-hairline bg-alt pl-3 pr-1">
+              <span className="flex-1 font-medium">{p.rev}</span>
+              <button className="btn-ghost h-7 px-1" onClick={() => setRevising(true)}>Revise…</button>
+            </div>
+          </div>
           <Field label="Category" className="col-span-2">
             <select className="input" value={p.category} onChange={(e) => changeCategory(e.target.value)}>
               {data.settings.categories.map((c) => <option key={c.prefix} value={c.prefix}>{c.prefix} · {c.name}</option>)}
@@ -103,6 +114,13 @@ export default function PartPanel({ id }: { id: string }) {
             </select>
           </Field>
           <Field label="Unit" className="col-span-2"><input className="input" value={p.unit} onChange={(e) => set('unit', e.target.value)} /></Field>
+          <Field label="Country of origin" className="col-span-2"><CountryInput value={p.countryOfOrigin ?? ''} placeholder="Where it is made" onChange={(v) => set('countryOfOrigin', v)} /></Field>
+          {!isAsm && (
+            <label className="col-span-4 flex items-center gap-2 self-end pb-2 text-sm">
+              <input type="checkbox" checked={!!p.serialized} onChange={(e) => set('serialized', e.target.checked)} />
+              Serialized: record each unit's serial number in builds
+            </label>
+          )}
           <Field label={isAsm ? 'Extra weight (g), e.g. glue, wiring' : 'Weight per unit (g)'} className="col-span-2"><NumInput value={p.weight ?? null} min={0} placeholder="grams" onChange={(v) => set('weight', v)} /></Field>
           <div className="col-span-4">
             <span className="label">{isAsm ? 'Source of extra weight' : 'Weight source'}</span>
@@ -217,6 +235,14 @@ export default function PartPanel({ id }: { id: string }) {
         </Section>
       )}
 
+      <Section title="Revision history">
+        <RevisionLog part={p} />
+      </Section>
+
+      <Section title="Traceability">
+        <PartTraceability part={p} />
+      </Section>
+
       <Section title="Files (drawings, datasheets, STEP)">
         <Attachments files={p.files} group={p.pn} onChange={(f) => set('files', f)} />
       </Section>
@@ -224,6 +250,7 @@ export default function PartPanel({ id }: { id: string }) {
       <Section title="Notes">
         <textarea className="input min-h-20" value={p.notes} onChange={(e) => set('notes', e.target.value)} />
       </Section>
+      {revising && <ReviseDialog part={p} onClose={() => setRevising(false)} />}
     </SidePanel>
   )
 }

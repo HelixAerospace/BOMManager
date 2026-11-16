@@ -121,5 +121,63 @@ export function sampleData(): BomData {
       lines: [{ id: uid(), partId: esc, qty: 16, unitPrice: 42, qtyReceived: 0 }],
     },
   )
+  // ---- quality records (example) ----
+  const S = (id: string) => data.suppliers.find((x) => x.id === id)!
+  Object.assign(S(tmotor), { country: 'China', aslStatus: 'approved', approvedFor: 'COTS motors, ESCs and propellers', approvedOn: d(-200), reviewDue: d(165), aslNotes: 'Manufacturer direct; 2 orders without issues' })
+  Object.assign(S(digikey), { country: 'United States', aslStatus: 'approved', approvedFor: 'Electronic components (authorised distributor)', approvedOn: d(-300), reviewDue: d(65) })
+  Object.assign(S(cnc), { country: 'Israel', aslStatus: 'conditional', approvedFor: 'CNC machining to drawing', approvedOn: d(-60), reviewDue: d(30), aslNotes: 'Conditional until NCR-0002 corrective action is verified' })
+  Object.assign(S(mcm), { country: 'United States', aslStatus: 'approved', approvedFor: 'Fasteners and hardware', approvedOn: d(-300), reviewDue: d(-5) })
+  Object.assign(S(holy), { country: 'China', aslStatus: 'approved', approvedFor: 'Flight controllers and GPS', approvedOn: d(-150), reviewDue: d(215) })
+  Object.assign(S(getfpv), { country: 'United States', aslStatus: 'pending', approvedFor: 'Distributor for COTS propulsion (backup source)' })
+
+  const P = (pn: string) => data.parts.find((x) => x.pn === pn)!
+  const origin: Record<string, string> = {
+    'MEC-00001': 'Israel', 'MEC-00002': 'Israel', 'MEC-00003': 'Israel', 'PUR-00001': 'China', 'PUR-00002': 'China', 'ELE-00001': 'China',
+    'ELE-00002': 'China', 'ELE-00003': 'China', 'ELE-00004': 'Taiwan', 'ELE-00005': 'China', 'FAS-00001': 'United States',
+  }
+  for (const [pn, c] of Object.entries(origin)) P(pn).countryOfOrigin = c
+  for (const pn of ['PUR-00001', 'ELE-00001', 'ELE-00002', 'ELE-00003']) P(pn).serialized = true
+  P('MEC-00001').revisions = [{ id: uid(), date: d(-70), fromRev: 'A', toRev: 'B', change: 'Motor-arm bolt holes moved 1.5 mm outward; corner radius 3 → 5 mm', reason: 'Cracking at corners in flight test (NCR-0001)', source: 'manual' }]
+
+  // Released configuration: a frozen copy of the current BOM
+  const pn = (id: string) => data.parts.find((x) => x.id === id)!
+  const lines: BomData['releases'][number]['lines'] = []
+  const walk = (id: string) => {
+    for (const l of data.bom.filter((x) => x.parentId === id).sort((a, b) => pn(a.childId).pn.localeCompare(pn(b.childId).pn))) {
+      const c = pn(l.childId)
+      lines.push({ parentPn: pn(id).pn, pn: c.pn, name: c.name, rev: c.rev, qty: l.qty })
+      walk(l.childId)
+    }
+  }
+  walk(drone)
+  const rel = { id: uid(), assemblyId: drone, name: 'Helix H1 Drone config 1.0', date: d(-30), notes: 'First configuration for demo units', lines }
+  data.releases.push(rel)
+
+  // Two built units: one complete and fully traced, one in progress
+  const po = (n: string) => data.orders.find((o) => o.number === n)!.id
+  const leaves: [string, number][] = [['MEC-00001', 2], ['MEC-00002', 4], ['MEC-00003', 4], ['PUR-00001', 4], ['PUR-00002', 4], ['ELE-00001', 4], ['ELE-00002', 1], ['ELE-00003', 1], ['ELE-00004', 1], ['ELE-00005', 6], ['FAS-00001', 48], ['CON-00001', 0.05]]
+  const lot: Record<string, string | null> = { 'PUR-00001': po('PO-0003'), 'ELE-00001': po('PO-0003') }
+  const mkItems = (unit: number, complete: boolean) =>
+    leaves.map(([code, qty]) => ({
+      id: uid(), partId: P(code).id, qty, lotOrderId: lot[code] ?? null,
+      serials: P(code).serialized ? Array.from({ length: qty }, (_, k) => (complete || code === 'PUR-00001' ? `${code.slice(0, 3)}${unit}${String(k + 1).padStart(2, '0')}-${(1000 + unit * 17 + k).toString(36).toUpperCase()}` : '')) : [],
+    }))
+  data.builds.push(
+    { id: uid(), serial: 'SN-0001', assemblyId: drone, releaseId: rel.id, status: 'complete', startedOn: d(-25), completedOn: d(-21), notes: 'FW 1.4.2 · test flight 12 min OK. Built before lot tracking started for most parts.', items: mkItems(1, true).map((i) => (i.partId === P('PUR-00001').id ? { ...i, lotOrderId: po('PO-0001') } : i)) },
+    { id: uid(), serial: 'SN-0002', assemblyId: drone, releaseId: rel.id, status: 'in-progress', startedOn: d(-3), completedOn: '', notes: '', items: mkItems(2, false) },
+  )
+
+  data.ncrs.push(
+    {
+      id: uid(), number: 'NCR-0001', date: d(-75), title: 'Center plate cracked at corners after flight test', description: 'Hairline cracks at two corner bolt holes after 6 flights. Drawing rev A, 3 mm carbon.',
+      severity: 'major', partId: P('MEC-00001').id, orderId: null, supplierId: cnc, buildId: null, qtyAffected: 2, disposition: 'scrap',
+      rootCause: 'Corner radius too small and bolt holes too close to the edge (design).', correctiveAction: 'Drawing revised to rev B: holes moved outward, corner radius 5 mm.', status: 'closed', closedOn: d(-68), files: [],
+    },
+    {
+      id: uid(), number: 'NCR-0002', date: d(-4), title: 'Arm clamps bore oversize', description: 'Clamp bore measured 20.12–20.15 mm; drawing 20.00 +0.05/−0. Arms slip under torque.',
+      severity: 'major', partId: P('MEC-00003').id, orderId: po('PO-0005'), supplierId: cnc, buildId: null, qtyAffected: 4, disposition: 'return-to-supplier',
+      rootCause: '', correctiveAction: '', status: 'open', closedOn: '', files: [],
+    },
+  )
   return data
 }

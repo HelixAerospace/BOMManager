@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { AlertTriangle, ListTree, Truck, Warehouse } from 'lucide-react'
+import { ClipboardX, ShieldAlert, AlertTriangle, ListTree, Truck, Warehouse } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useNav } from '../lib/nav'
 import { useDerived, useMoney } from '../lib/derived'
@@ -18,6 +18,8 @@ export default function Dashboard() {
 
   const bc = useMemo(() => (topId ? buildCheck(data, idx, topId, units, false) : null), [data, idx, topId, units])
   const open = data.orders.filter(isOpen)
+  const openNcrs = data.ncrs.filter((n) => n.status === 'open').sort((a, b) => (a.severity === 'minor' ? 1 : 0) - (b.severity === 'minor' ? 1 : 0))
+  const unapprovedOrders = data.orders.filter((o) => (o.status === 'draft' || isOpen(o)) && o.supplierId && idx.supplierById.get(o.supplierId)?.aslStatus !== 'approved')
   const late = open.filter(isLate)
   const openValue = open.reduce((s, o) => s + orderValueIls(data, o), 0)
   const lowStock = data.parts.filter((p) => stockState(p) !== 'ok')
@@ -89,6 +91,14 @@ export default function Dashboard() {
           <Card className="lg:col-span-3">
             <div className="border-b border-hairline px-4 py-3 text-[15px] font-semibold leading-6">Needs attention</div>
             <ul className="divide-y divide-hairline">
+              {openNcrs.map((n) => (
+                <Row key={n.id} icon={<ClipboardX className={`h-4 w-4 ${n.severity === 'minor' ? 'text-caution' : 'text-warning'}`} />} onClick={() => nav.openNcr(n.id)}
+                  title={<><span className="font-mono text-xs text-ink-subtle">{n.number}</span> {n.title || 'Untitled nonconformance'}</>} meta={`${n.severity}${n.disposition === 'pending' ? ' · no decision yet' : ''}`} />
+              ))}
+              {unapprovedOrders.map((o) => (
+                <Row key={'asl' + o.id} icon={<ShieldAlert className="h-4 w-4 text-caution" />} onClick={() => nav.openOrder(o.id)}
+                  title={<>{o.number} is with {idx.supplierById.get(o.supplierId ?? '')?.name}, not an approved supplier</>} meta="review supplier" />
+              ))}
               {late.map((o) => (
                 <Row key={o.id} icon={<Truck className="h-4 w-4 text-warning" />} onClick={() => nav.openOrder(o.id)}
                   title={<>{o.number} from {idx.supplierById.get(o.supplierId ?? '')?.name ?? '—'} is late</>} meta={`expected ${o.expectedDate}`} />
@@ -101,7 +111,7 @@ export default function Dashboard() {
                 <Row key={p.id} icon={<Warehouse className="h-4 w-4 text-caution" />} onClick={() => nav.openPart(p.id)}
                   title={<><span className="font-mono text-xs text-ink-subtle">{p.pn}</span> {p.name}</>} meta={`${p.onHand} on hand, keep ${Math.max(p.minStock, p.sparesTarget)}`} />
               ))}
-              {late.length + shortParts.length + lowStock.length === 0 && <li className="px-4 py-8 text-center text-sm text-ink-subtle">Nothing needs attention</li>}
+              {late.length + shortParts.length + lowStock.length + openNcrs.length + unapprovedOrders.length === 0 && <li className="px-4 py-8 text-center text-sm text-ink-subtle">Nothing needs attention</li>}
             </ul>
           </Card>
 

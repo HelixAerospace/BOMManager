@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Boxes, Building2, FolderOpen, LayoutDashboard, ListTree, Loader2, RefreshCw, Save, Settings as SettingsIcon, ShoppingCart, Warehouse, CheckCircle2, Search, AlertTriangle } from 'lucide-react'
+import { ShieldCheck, Wrench, Boxes, Building2, FolderOpen, LayoutDashboard, ListTree, Loader2, RefreshCw, Save, Settings as SettingsIcon, ShoppingCart, Warehouse, CheckCircle2, Search, AlertTriangle } from 'lucide-react'
 import { useStore } from './lib/store'
 import { useNav, type Screen } from './lib/nav'
 import { fsSupported } from './lib/storage'
@@ -15,6 +15,9 @@ import SettingsScreen from './screens/Settings'
 import PartPanel from './screens/PartPanel'
 import OrderPanel from './screens/OrderPanel'
 import SupplierPanel from './screens/SupplierPanel'
+import BuildsScreen, { BuildPanel } from './screens/Builds'
+import QualityScreen, { NcrPanel } from './screens/Quality'
+import { ReleasePanel } from './screens/Releases'
 
 const NAV: { id: Screen; label: string; icon: typeof Boxes }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -23,6 +26,8 @@ const NAV: { id: Screen; label: string; icon: typeof Boxes }[] = [
   { id: 'orders', label: 'Orders', icon: ShoppingCart },
   { id: 'inventory', label: 'Inventory', icon: Warehouse },
   { id: 'suppliers', label: 'Suppliers', icon: Building2 },
+  { id: 'builds', label: 'Builds', icon: Wrench },
+  { id: 'quality', label: 'Quality', icon: ShieldCheck },
 ]
 
 export default function App() {
@@ -109,7 +114,7 @@ function Shell() {
     return () => window.removeEventListener('keydown', k)
   }, [])
 
-  const Screen = { dashboard: Dashboard, bom: BomScreen, parts: PartsScreen, orders: OrdersScreen, inventory: InventoryScreen, suppliers: SuppliersScreen, settings: SettingsScreen }[nav.screen]
+  const Screen = { dashboard: Dashboard, bom: BomScreen, parts: PartsScreen, orders: OrdersScreen, inventory: InventoryScreen, suppliers: SuppliersScreen, builds: BuildsScreen, quality: QualityScreen, settings: SettingsScreen }[nav.screen]
 
   return (
     <div className="flex h-full">
@@ -151,6 +156,9 @@ function Shell() {
       {nav.partId && <PartPanel id={nav.partId} />}
       {nav.orderId && <OrderPanel id={nav.orderId} />}
       {nav.supplierId && <SupplierPanel id={nav.supplierId} />}
+      {nav.buildId && <BuildPanel id={nav.buildId} />}
+      {nav.ncrId && <NcrPanel id={nav.ncrId} />}
+      {nav.releaseId && <ReleasePanel id={nav.releaseId} />}
       {palette && <Palette onClose={() => setPalette(false)} />}
       {s.conflict && <ConflictDialog />}
       {s.toast && <div role="status" className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-lg border border-ink bg-ink px-4 py-2 text-sm text-on-ink"><CheckCircle2 className="h-4 w-4" /> {s.toast}</div>}
@@ -228,6 +236,8 @@ function Palette({ onClose }: { onClose: () => void }) {
       ...data.parts.map((p) => ({ key: p.id, kind: 'Part', label: `${p.pn}  ${p.name}`, sub: '', run: () => nav.openPart(p.id) })),
       ...data.orders.map((o) => ({ key: o.id, kind: 'Order', label: o.number, sub: data.suppliers.find((x) => x.id === o.supplierId)?.name ?? '', run: () => nav.openOrder(o.id) })),
       ...data.suppliers.map((x) => ({ key: x.id, kind: 'Supplier', label: x.name, sub: '', run: () => nav.openSupplier(x.id) })),
+      ...data.builds.map((b) => ({ key: b.id, kind: 'Build', label: b.serial, sub: b.items.flatMap((i) => i.serials).filter(Boolean).join(' '), run: () => nav.openBuild(b.id) })),
+      ...data.ncrs.map((n) => ({ key: n.id, kind: 'NCR', label: `${n.number}  ${n.title}`, sub: '', run: () => nav.openNcr(n.id) })),
     ]
     return (s ? all.filter((i) => (i.label + ' ' + i.sub).toLowerCase().includes(s)) : all.slice(0, 6)).slice(0, 12)
   }, [q, data, nav])

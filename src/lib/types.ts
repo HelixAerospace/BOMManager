@@ -29,6 +29,9 @@ export interface Part {
   packQty?: number | null // pieces per pack
   weight?: number | null // grams per unit; for assemblies, extra weight on top of the children (glue, wiring…)
   weightSource?: WeightSource | null // where the weight number comes from
+  countryOfOrigin?: string // where the part is made (can differ from the supplier's country)
+  serialized?: boolean // record a serial number for each unit in builds
+  revisions?: RevisionEntry[] // revision log, oldest first
   supplierId: ID | null // preferred supplier (mirrors the preferred entry in sources)
   supplierPn: string
   url: string
@@ -70,6 +73,86 @@ export interface Supplier {
   phone: string
   currency: string
   notes: string
+  // Approved supplier list (quality)
+  country?: string // where the supplier is based
+  aslStatus?: AslStatus
+  approvedFor?: string // scope, e.g. "COTS propulsion", "CNC machining to drawing"
+  approvedOn?: string // yyyy-mm-dd
+  reviewDue?: string // yyyy-mm-dd
+  aslNotes?: string // basis of approval: samples, audit, history…
+}
+
+/** Approved supplier list status. */
+export type AslStatus = 'approved' | 'conditional' | 'pending' | 'disqualified'
+export const ASL_STATUSES: { value: AslStatus; label: string }[] = [
+  { value: 'approved', label: 'Approved' },
+  { value: 'conditional', label: 'Conditional' },
+  { value: 'pending', label: 'Pending review' },
+  { value: 'disqualified', label: 'Disqualified' },
+]
+
+/** One entry in a part's revision log (configuration control). */
+export interface RevisionEntry {
+  id: ID
+  date: string // yyyy-mm-dd
+  fromRev: string
+  toRev: string
+  change: string // what changed
+  reason: string // why
+  source?: 'manual' | 'inventor'
+}
+
+/** A released configuration: a frozen copy of an assembly's BOM with every part's revision. */
+export interface Release {
+  id: ID
+  assemblyId: ID
+  name: string // e.g. "H1 config 1.0"
+  date: string
+  notes: string
+  lines: { parentPn: string; pn: string; name: string; rev: string; qty: number }[] // structure, one per BOM line
+}
+
+export type BuildStatus = 'in-progress' | 'complete' | 'scrapped'
+/** Which lot (order) and serial numbers went into one built unit for one part. */
+export interface BuildItem {
+  id: ID
+  partId: ID
+  qty: number // pieces used in this unit
+  lotOrderId: ID | null // order the parts came from (lot); null = unknown / from stock before tracking
+  serials: string[] // for serialized parts
+}
+export interface Build {
+  id: ID
+  serial: string // e.g. H1-0001
+  assemblyId: ID
+  releaseId: ID | null
+  status: BuildStatus
+  startedOn: string
+  completedOn: string
+  notes: string
+  items: BuildItem[]
+}
+
+export type NcrSeverity = 'minor' | 'major' | 'critical'
+export type NcrDisposition = 'pending' | 'use-as-is' | 'rework' | 'return-to-supplier' | 'scrap'
+export interface Ncr {
+  id: ID
+  number: string // NCR-0001
+  date: string
+  title: string
+  description: string
+  severity: NcrSeverity
+  partId: ID | null
+  orderId: ID | null
+  supplierId: ID | null
+  buildId: ID | null
+  qtyAffected: number | null
+  disposition: NcrDisposition
+  rootCause: string
+  correctiveAction: string
+  status: 'open' | 'closed'
+  closedOn: string
+  files: string[]
 }
 
 export type OrderStatus = 'draft' | 'ordered' | 'shipped' | 'partial' | 'received' | 'cancelled'
@@ -130,6 +213,9 @@ export interface BomData {
   suppliers: Supplier[]
   orders: Order[]
   stockMoves: StockMove[]
+  releases: Release[]
+  builds: Build[]
+  ncrs: Ncr[]
 }
 
 export const DEFAULT_CATEGORIES: Category[] = [
@@ -161,6 +247,9 @@ export function emptyData(): BomData {
     suppliers: [],
     orders: [],
     stockMoves: [],
+    releases: [],
+    builds: [],
+    ncrs: [],
   }
 }
 

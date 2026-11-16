@@ -1,10 +1,12 @@
 import { Fragment, useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, ListTree, Plus, ShoppingCart, Trash2, ChevronsDownUp, ChevronsUpDown } from 'lucide-react'
+import { Stamp, ChevronDown, ChevronRight, ListTree, Plus, ShoppingCart, Trash2, ChevronsDownUp, ChevronsUpDown } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useNav } from '../lib/nav'
 import { useDerived, useMoney } from '../lib/derived'
 import { arrivalsText, availability, buildCheck, createsCycle, fmtMoney, fmtNum, fmtWeight, nextPoNumber, roundToPacks, weightBySource } from '../lib/calc'
 import { WeightSourceChip, WeightSourceStats } from '../components/weight'
+import { diffConfig, diffCount, latestRelease, snapshotLines } from '../lib/quality'
+import { ReleaseDialog } from './Releases'
 import { type ID, type Part, uid } from '../lib/types'
 import { AvailabilityChip, Empty, FilterTabs, MakeBuyChip, NumInput, PageHeader, PartPicker } from '../components/ui'
 import { newPart } from './Parts'
@@ -19,6 +21,7 @@ export default function BomScreen() {
   const [sel, setSel] = useState<ID | undefined>(data.settings.topAssemblyId ?? topAssemblies[0]?.id)
   const topId = sel && idx.partById.has(sel) ? sel : topAssemblies[0]?.id ?? assemblies[0]?.id
   const [view, setView] = useState<'tree' | 'weight' | 'build'>('tree')
+  const [releasing, setReleasing] = useState(false)
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const [addingTo, setAddingTo] = useState<ID | null>(null)
   const units = data.settings.buildQty || 1
@@ -99,6 +102,8 @@ export default function BomScreen() {
 
   const top = idx.partById.get(topId!)!
   const topCost = costs.get(top.id)
+  const lastRel = latestRelease(data, top.id)
+  const relChanges = lastRel ? diffCount(diffConfig(lastRel.lines, snapshotLines(idx, top.id))) : 0
   const topWeight = weights.get(top.id)
   const totalGrams = topWeight?.grams || 0
   const srcBreakdown = weightBySource(idx, top.id)
@@ -140,12 +145,20 @@ export default function BomScreen() {
             <select className="input w-auto" value={top.id} onChange={(e) => setSel(e.target.value)}>
               {assemblies.map((a) => <option key={a.id} value={a.id}>{a.pn} {a.name}</option>)}
             </select>
+            <button className="btn" onClick={() => setReleasing(true)}><Stamp className="h-4 w-4" /> Release configuration…</button>
             <button className="btn" onClick={newAssembly}><Plus className="h-4 w-4" /> New assembly</button>
           </>
         }
       />
       <div className="flex items-center justify-between gap-3 px-6 pt-4">
-        <FilterTabs value={view} onChange={setView} options={[{ value: 'tree', label: 'Structure & cost' }, { value: 'weight', label: 'Weight' }, { value: 'build', label: 'Build check' }]} />
+        <div className="flex items-center gap-4">
+          <FilterTabs value={view} onChange={setView} options={[{ value: 'tree', label: 'Structure & cost' }, { value: 'weight', label: 'Weight' }, { value: 'build', label: 'Build check' }]} />
+          <span className="text-sm text-ink-muted">
+            {lastRel ? (
+              <>Configuration <button className="font-medium text-accent hover:underline" onClick={() => nav.openRelease(lastRel.id)}>{lastRel.name}</button> · released {lastRel.date}{relChanges > 0 ? <span className="text-caution"> · {relChanges} change{relChanges > 1 ? 's' : ''} since</span> : <span> · unchanged</span>}</>
+            ) : <span className="text-ink-subtle">No released configuration yet</span>}
+          </span>
+        </div>
         {view !== 'build' ? (
           <div className="flex gap-1">
             <button className="btn-ghost" onClick={() => setCollapsed(new Set())}><ChevronsUpDown className="h-4 w-4" /> Expand all</button>
@@ -334,6 +347,7 @@ export default function BomScreen() {
           </div>
         </div>
       )}
+      {releasing && <ReleaseDialog assemblyId={top.id} onClose={() => setReleasing(false)} />}
     </>
   )
 }
